@@ -15,17 +15,7 @@ export class MonitorComponent {
 
   readonly streamState$ = this.twitchService.streamState$;
 
-  readonly follows$ = this.twitchService.follows$;
-
-  readonly subscriptions$ = this.twitchService.subscriptions$;
-
-  readonly giftSubscriptions$ = this.twitchService.giftSubscriptions$;
-
-  readonly bits$ = this.twitchService.bits$;
-
-  readonly raids$ = this.twitchService.raids$;
-
-  readonly redemptions$ = this.twitchService.redemptions$;
+  readonly alerts$ = this.twitchService.alerts$;
 
   constructor(private readonly twitchService: TwitchService) {}
 }

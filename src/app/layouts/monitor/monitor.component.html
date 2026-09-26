@@ -1,6 +1,6 @@
-<div class="monitor">
-  <header class="stream-header">
-    <div class="stream-status">
+<div class="monitor flex-col">
+  <header class="stream-header flex align-center justify-space-between">
+    <div class="stream-status flex flex-row align-center">
       @if ((streamState$ | async) === "online") {
         <span class="status-dot online"></span>
         <span>LIVE</span>
@@ -9,18 +9,74 @@
         <span>OFFLINE</span>
       }
     </div>
-
-    <div class="stream-info">
-      <strong>Twitch Monitor</strong>
-    </div>
+    <!-- Additional stream info can go here -->
   </header>
 
-  <main class="monitor-content">
-    <section class="chat-panel">
-      <div class="panel-header">
-        <h2>Chat</h2>
-      </div>
+  <main class="monitor-content flex-row">
+    <section class="card-no-hover card flex-1 flex-col">
+      <div class="alerts">
+        @for (alert of alerts$ | async; track alert.id) {
+          <div class="alert">
+            @switch (alert.type) {
+              @case ("follow") {
+                <strong>New Follow</strong>
 
+                <span>
+                  {{ alert.data.displayName }}
+                </span>
+              }
+
+              @case ("subscription") {
+                <strong>New Subscription</strong>
+
+                <span>
+                  {{ alert.data.displayName }}
+                  · Tier {{ alert.data.tier }}
+                </span>
+              }
+
+              @case ("gift-subscription") {
+                <strong>Gift Subs</strong>
+
+                <span>
+                  {{ alert.data.displayName }}
+                  · {{ alert.data.total }}
+                </span>
+              }
+
+              @case ("bits") {
+                <strong>Bits</strong>
+
+                <span>
+                  {{ alert.data.displayName }}
+                  · {{ alert.data.bits }} Bits
+                </span>
+              }
+
+              @case ("raid") {
+                <strong>Raid</strong>
+
+                <span>
+                  {{ alert.data.displayName }}
+                  · {{ alert.data.viewers }} viewers
+                </span>
+              }
+
+              @case ("redemption") {
+                <strong>
+                  {{ alert.data.rewardTitle }}
+                </strong>
+
+                <span>
+                  {{ alert.data.displayName }}
+                </span>
+              }
+            }
+          </div>
+        }
+      </div>
+    </section>
+    <section class="card-no-hover card flex-1 flex-col">
       <div class="chat">
         @for (message of messages$ | async; track message.id) {
           <div class="chat-message">
@@ -31,101 +87,6 @@
             <span>
               {{ message.message }}
             </span>
-          </div>
-        }
-      </div>
-    </section>
-
-    <section class="alerts-panel">
-      <div class="panel-header">
-        <h2>Alerts</h2>
-      </div>
-
-      <div class="alerts">
-        @for (
-          follow of follows$ | async;
-          track follow.userId + follow.followedAt
-        ) {
-          <div class="alert follow">
-            <strong>New Follow</strong>
-            <span>
-              {{ follow.displayName }}
-            </span>
-          </div>
-        }
-
-        @for (
-          subscription of subscriptions$ | async;
-          track subscription.userId
-        ) {
-          <div class="alert subscription">
-            <strong>New Subscription</strong>
-            <span>
-              {{ subscription.displayName }}
-              · Tier {{ subscription.tier }}
-            </span>
-          </div>
-        }
-
-        @for (
-          gift of giftSubscriptions$ | async;
-          track (gift.username ?? "") + gift.total
-        ) {
-          <div class="alert gift">
-            <strong>Gift Subs</strong>
-            <span>
-              @if (gift.isAnonymous) {
-                Anonymous
-              } @else {
-                {{ gift.displayName }}
-              }
-
-              · {{ gift.total }}
-            </span>
-          </div>
-        }
-
-        @for (bits of bits$ | async; track (bits.username ?? "") + bits.bits) {
-          <div class="alert bits">
-            <strong>Bits</strong>
-            <span>
-              {{ bits.displayName }}
-              · {{ bits.bits }} Bits
-            </span>
-
-            @if (bits.message) {
-              <small>
-                {{ bits.message }}
-              </small>
-            }
-          </div>
-        }
-
-        @for (raid of raids$ | async; track raid.userId + raid.viewers) {
-          <div class="alert raid">
-            <strong>Raid</strong>
-            <span>
-              {{ raid.displayName }}
-              · {{ raid.viewers }} viewers
-            </span>
-          </div>
-        }
-
-        @for (redemption of redemptions$ | async; track redemption.id) {
-          <div class="alert redemption">
-            <strong>
-              {{ redemption.rewardTitle }}
-            </strong>
-
-            <span>
-              {{ redemption.displayName }}
-            </span>
-
-            @if (redemption.userInput) {
-              <small>
-                {{ redemption.userInput }}
-              </small>
-            }
           </div>
         }
       </div>

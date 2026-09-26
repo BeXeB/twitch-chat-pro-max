@@ -11,6 +11,7 @@ import { GiftSubscriptionEvent } from './models/gift-subscription-event.model';
 import { BitsEvent } from './models/bits-event.model';
 import { RaidEvent } from './models/raid-event.model';
 import { ChannelPointRedemptionEvent } from './models/channel-point-redemption-event.model';
+import { TwitchAlert } from './models/twitch-alert.model';
 
 @Injectable({
   providedIn: 'root',
@@ -91,6 +92,10 @@ export class TwitchService {
 
   readonly redemptions$ = this.redemptionsSubject.asObservable();
 
+  private readonly alertsSubject = new BehaviorSubject<TwitchAlert[]>([]);
+
+  readonly alerts$ = this.alertsSubject.asObservable();
+
   connectToTwitch(): void {
     const params = new URLSearchParams({
       client_id: this.clientId,
@@ -107,6 +112,7 @@ export class TwitchService {
     const hash = window.location.hash;
 
     if (!hash) {
+      this.connectToTwitch();
       return;
     }
 
@@ -114,16 +120,15 @@ export class TwitchService {
 
     const accessToken = params.get('access_token');
 
-    // Remove the OAuth token from the browser URL.
     window.history.replaceState({}, document.title, window.location.pathname);
 
     if (!accessToken) {
+      this.connectToTwitch();
       return;
     }
 
     await this.connect(accessToken);
   }
-
   async connect(accessToken: string): Promise<void> {
     this.accessToken = accessToken;
 
@@ -141,6 +146,12 @@ export class TwitchService {
     console.log('Connected Twitch user:', user.displayName);
 
     this.connectToEventSub();
+  }
+
+  private addAlert(alert: TwitchAlert): void {
+    const alerts = this.alertsSubject.value;
+
+    this.alertsSubject.next([...alerts, alert]);
   }
 
   private async getCurrentUser(): Promise<TwitchUser | null> {
@@ -458,6 +469,12 @@ export class TwitchService {
     };
 
     this.followsSubject.next([...this.followsSubject.value, follow]);
+    this.addAlert({
+      id: follow.userId,
+      type: 'follow',
+      timestamp: follow.followedAt,
+      data: follow,
+    });
   }
 
   private handleSubscription(message: any): void {
@@ -475,6 +492,12 @@ export class TwitchService {
       ...this.subscriptionsSubject.value,
       subscription,
     ]);
+    this.addAlert({
+      id: subscription.userId,
+      type: 'subscription',
+      timestamp: new Date().toISOString(),
+      data: subscription,
+    });
   }
 
   private handleGiftSubscription(message: any): void {
@@ -494,6 +517,12 @@ export class TwitchService {
       ...this.giftSubscriptionsSubject.value,
       gift,
     ]);
+    this.addAlert({
+      id: gift.userId ?? 'anonymous',
+      type: 'gift-subscription',
+      timestamp: new Date().toISOString(),
+      data: gift,
+    });
   }
 
   private handleSubscriptionMessage(message: any): void {
@@ -514,6 +543,12 @@ export class TwitchService {
     };
 
     this.bitsSubject.next([...this.bitsSubject.value, bits]);
+    this.addAlert({
+      id: bits.userId ?? 'anonymous',
+      type: 'bits',
+      timestamp: new Date().toISOString(),
+      data: bits,
+    });
   }
 
   private handleRaid(message: any): void {
@@ -527,6 +562,12 @@ export class TwitchService {
     };
 
     this.raidsSubject.next([...this.raidsSubject.value, raid]);
+    this.addAlert({
+      id: raid.userId,
+      type: 'raid',
+      timestamp: new Date().toISOString(),
+      data: raid,
+    });
   }
 
   private handleChannelPointRedemption(message: any): void {
@@ -549,6 +590,13 @@ export class TwitchService {
       ...this.redemptionsSubject.value,
       redemption,
     ]);
+
+    this.addAlert({
+      id: redemption.userId,
+      type: 'redemption',
+      timestamp: new Date().toISOString(),
+      data: redemption,
+    });
   }
 
   private handleHypeTrain(message: any): void {
