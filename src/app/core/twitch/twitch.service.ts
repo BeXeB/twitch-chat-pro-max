@@ -17,6 +17,7 @@ import { ChannelPointRedemptionEvent } from './models/channel-point-redemption-e
 })
 export class TwitchService {
   private readonly clientId = environment.twitchClientId;
+  private readonly eventSubUrl = environment.twitchEventSubUrl;
   private readonly redirectUri = 'http://localhost:4200';
 
   private readonly scopes: Set<string> = new Set([
@@ -174,7 +175,7 @@ export class TwitchService {
   }
 
   private connectToEventSub(): void {
-    this.socket = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
+    this.socket = new WebSocket(this.eventSubUrl);
 
     this.socket.onopen = () => {
       console.log('Connected to Twitch EventSub.');

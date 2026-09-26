@@ -1,7 +1,7 @@
 export const environment = {
-  production: true,
+  production: false,
 
   twitchClientId: 'ferm86dhad58mpx4by0wcswyazheud',
 
-  twitchEventSubUrl: 'wss://eventsub.wss.twitch.tv/ws',
+  twitchEventSubUrl: 'ws://localhost:8080/ws',
 };

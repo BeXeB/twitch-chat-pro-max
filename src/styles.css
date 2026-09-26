@@ -1,1 +1,246 @@
-/* You can add global styles to this file, and also import other style files */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("assets/fonts/JetBrainsMono/fonts/webfonts/JetBrainsMono-Regular.woff2")
+    format("woff2");
+}
+
+:root {
+  --black: #0e0e0e;
+  --dark-gray: #252525;
+  --darker-gray: #151515;
+  --gray: #333333;
+  --light-gray: #9a9aa8;
+  --white: #dbdbdb;
+  --blue: #0064c7;
+  --shadow-blue: #002f5974;
+  --red: #c70000;
+
+  --pyro: oklch(75.834% 0.10956 53.811);
+  --hydro: oklch(56.139% 0.09918 214.988);
+  --anemo: oklch(82.821% 0.11591 159.497);
+  --electro: oklch(72.834% 0.12103 305.115);
+  --dendro: oklch(84.118% 0.17804 123.225);
+  --cryo: oklch(83.9% 0.08099 196.77);
+  --geo: oklch(84.608% 0.1267 97.577);
+
+  --pyro-dark: oklch(65.834% 0.10956 53.811);
+  --hydro-dark: oklch(56.139% 0.09918 214.988);
+  --anemo-dark: oklch(67.821% 0.11591 159.497);
+  --electro-dark: oklch(57.834% 0.12103 305.115);
+  --dendro-dark: oklch(69.118% 0.17804 123.225);
+  --cryo-dark: oklch(68.9% 0.08099 196.77);
+  --geo-dark: oklch(74.608% 0.1267 97.577);
+
+  --highlight: oklch(89.519% 0.11491 85.425);
+
+  --rar-1: #3a3d42;
+  --rar-2: #1b4d2a;
+  --rar-3: #0f3f73;
+  --rar-4: #3d1a5f;
+  --rar-5: #7a4b00;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: "JetBrains Mono", monospace;
+  background-color: var(--black);
+  color: var(--white);
+}
+
+* {
+  scrollbar-width: auto;
+  scrollbar-color: var(--gray) var(--black);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.align-center {
+  align-items: center;
+}
+
+.justify-space-between {
+  justify-content: space-between;
+}
+
+.flex-row-between {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-wrap-center {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding-bottom: 20px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.flex-3 {
+  flex: 3;
+}
+
+.flex-4 {
+  flex: 4;
+}
+
+.flex-5 {
+  flex: 5;
+}
+
+.card {
+  border: 1px solid var(--gray);
+  background-color: var(--darker-gray);
+  border-radius: 13px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--blue);
+  box-shadow: 0 0 15px var(--shadow-blue);
+  background-color: var(--dark-gray);
+}
+
+.card-no-hover:hover {
+  border-color: var(--gray);
+  box-shadow: none;
+  background-color: var(--darker-gray);
+  overflow: none;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 10px 10px;
+  margin-bottom: 30px;
+  box-sizing: border-box;
+}
+
+button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--gray);
+  text-decoration: none;
+  cursor: pointer;
+  background-color: var(--darker-gray);
+  color: var(--white);
+  width: 120px;
+  height: 40px;
+  user-select: none;
+}
+
+button:hover,
+button.active {
+  border-color: var(--blue);
+  box-shadow: 0 0 8px var(--shadow-blue);
+  background-color: var(--dark-gray);
+  transition:
+    border-color 0.2s,
+    background-color 0.2s,
+    box-shadow 0.2s;
+}
+
+input,
+textarea,
+select {
+  background-color: var(--darker-gray);
+  color: var(--white);
+  border: 1px solid var(--gray);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input:hover,
+textarea:hover,
+select:hover,
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 8px var(--shadow-blue);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--light-gray);
+  opacity: 0.7;
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: var(--gray);
+  color: var(--light-gray);
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+input.error,
+textarea.error,
+select.error {
+  border-color: #ff4c4c;
+  box-shadow: 0 0 6px rgba(255, 76, 76, 0.5);
+}

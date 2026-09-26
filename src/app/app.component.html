@@ -1,1 +1,5 @@
-<router-outlet></router-outlet>
+@if (connected$ | async) {
+  <router-outlet></router-outlet>
+} @else {
+  <button (click)="connectToTwitch()">Connect to Twitch</button>
+}
