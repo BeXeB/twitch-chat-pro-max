@@ -66,6 +66,26 @@ test('returns the original result for a repeated redemption without another roll
   });
 });
 
+test('resolves equipped catalog items into per-user cosmetic values', async () => {
+  const inventory = new InMemoryInventoryRepository();
+  await inventory.awardOpening({
+    acquiredAt: '2026-09-27T00:00:00.000Z',
+    announced: true,
+    boxId: 'adventurer-cache',
+    boxName: 'Chat Style Cache',
+    itemId: 'ember-text',
+    itemName: 'Ember Text',
+    redemptionId: 'redemption-1',
+    userId: '12345',
+  });
+  await inventory.equip('12345', 'message-color', 'ember-text');
+  const service = new LootboxService(new InMemoryLootboxCatalogRepository(), inventory);
+
+  assert.deepEqual(await service.getEquippedCosmetics(), {
+    '12345': { 'message-color': '#FF735C' },
+  });
+});
+
 test('rejects unknown lootboxes and invalid user IDs', async () => {
   const service = new LootboxService(
     new InMemoryLootboxCatalogRepository(),

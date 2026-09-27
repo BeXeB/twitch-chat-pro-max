@@ -18,7 +18,9 @@ Thus the first redemption awards 515 leaderboard points and raises the next cost
 
 ## Lootbox Redemptions
 
-The companion seeds `data/lootbox-catalog.json` with a `Chat Style Cache` (`adventurer-cache`) the first time it is opened. Its weighted cosmetic drops are Ember Text (message color, 40), Mint Signature (username color, 25), Gilded Edge (border color, 20), Starlight Frame (special border style, 10), and Slide Entry (message entry effect, 5). Edit this local version-1 catalog to change cosmetics and weights; an existing catalog is never replaced. Opening a box adds the cosmetic to `data/inventories.json`, stacking duplicate item IDs. Equipped cosmetic slots are persisted for later `!equip` support. The current overlay does not apply them yet; that is a separate follow-up.
+The companion seeds `data/lootbox-catalog.json` with a `Chat Style Cache` (`adventurer-cache`) when the overlay first requests cosmetics or a box is opened. Its weighted cosmetic drops are Ember Text (message color, 40), Mint Signature (username color, 25), Gilded Edge (border color, 20), Starlight Frame (special border style, 10), and Slide Entry (message entry effect, 5). Edit this local version-1 catalog to change cosmetics and weights; an existing catalog is never replaced. Opening a box adds the cosmetic to `data/inventories.json`, stacking duplicate item IDs. Equipped cosmetic slots are persisted for later `!equip` support. The OBS overlay reads `/api/chat/cosmetics` and renders equipped message/username colors, border colors/styles, and entry effects. Items are not equipped automatically when won.
+
+Entry effects use the `ChatEntryEffect` type and `CHAT_ENTRY_EFFECTS` registry in `shared/contracts/lootboxes.ts`; the overlay maps each effect to a keyframe in `CHAT_ENTRY_ANIMATIONS` and CSS in `src/app/layouts/overlay/overlay.component.css`. Adding an effect means registering its ID, mapping it to a keyframe, and defining that keyframe. Border styles follow the corresponding `ChatBorderStyle`, `CHAT_BORDER_STYLES`, and `CHAT_BORDER_CLASSES` registries. The types make missing renderer registrations a compile-time error.
 
 To connect a Channel Point reward, add an automation like this to the version-1 `data/automations.json` document, replacing the reward ID with the ID of a synchronized reward:
 
@@ -41,7 +43,7 @@ To connect a Channel Point reward, add an automation like this to the version-1 
 }
 ```
 
-Then map that Twitch reward to `open-adventurer-cache` through the existing reward-mapping flow and choose `auto-fulfill`. The action posts `@viewer opened Chat Style Cache and found Ember Text.` (with the actual viewer and cosmetic) in public chat. A failed chat send leaves the redemption pending for review; retrying the same redemption reuses the recorded drop. Restart the companion after editing local JSON. `!inventory`, `!equip`, and overlay rendering are not included in this phase.
+Then map that Twitch reward to `open-adventurer-cache` through the existing reward-mapping flow and choose `auto-fulfill`. The action posts `@viewer opened Chat Style Cache and found Ember Text.` (with the actual viewer and cosmetic) in public chat. A failed chat send leaves the redemption pending for review; retrying the same redemption reuses the recorded drop. Restart the companion after editing local JSON. `!inventory` and `!equip` are not included in this phase.
 
 ## Add Another Reward
 

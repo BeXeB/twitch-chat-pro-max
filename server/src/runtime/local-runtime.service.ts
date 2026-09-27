@@ -56,6 +56,7 @@ import { TwitchOperationsService } from '../features/twitch-operations/twitch-op
 import { RedemptionAutomationRouter } from '../features/rewards/redemption-automation-router';
 import { RewardMappingRepository } from '../features/rewards/reward-mapping-repository';
 import { TwitchRewardService } from '../features/rewards/twitch-reward.service';
+import { ChatCosmeticsByUserId } from '../../../shared/contracts/lootboxes';
 import { LootboxService } from '../features/lootboxes/lootbox-service';
 import {
   InMemoryLeaderboardRepository,
@@ -106,7 +107,7 @@ export class LocalRuntimeService {
     commandRepository: CommandRepository,
     continuationRepository: ContinuationRepository,
     private readonly rewardMappings: RewardMappingRepository,
-    lootboxes: LootboxService,
+    private readonly lootboxes: LootboxService,
     discordStreamWebhookUrl: string | null = null,
     leaderboard: LeaderboardRepository = new InMemoryLeaderboardRepository(),
   ) {
@@ -142,7 +143,7 @@ export class LocalRuntimeService {
           this.rewards.update(reward);
           return reward.cost;
         }),
-        new OpenLootboxActionHandler(lootboxes, (message) => this.sendChatMessage(message)),
+        new OpenLootboxActionHandler(this.lootboxes, (message) => this.sendChatMessage(message)),
         new ResolvePredictionActionHandler((predictionId, status, winningOutcomeId) =>
           this.operations.resolvePrediction(predictionId, status, winningOutcomeId),
         ),
@@ -289,6 +290,10 @@ export class LocalRuntimeService {
 
   listRewards(): ChannelPointReward[] {
     return this.rewards.list();
+  }
+
+  async getChatCosmetics(): Promise<ChatCosmeticsByUserId> {
+    return this.lootboxes.getEquippedCosmetics();
   }
 
   async syncRewards(): Promise<ChannelPointReward[]> {

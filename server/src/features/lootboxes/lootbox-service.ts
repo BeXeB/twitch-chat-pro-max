@@ -1,8 +1,17 @@
 import { randomInt } from 'node:crypto';
 
 import { InventoryOpeningRecord } from '../../../../shared/contracts/inventory';
-import { LootboxDefinition, LootboxItemDefinition } from '../../../../shared/contracts/lootboxes';
-import { InventoryRepository, validateUserId } from '../inventory/inventory-repository';
+import {
+  ChatCosmeticsByUserId,
+  CosmeticSlot,
+  LootboxDefinition,
+  LootboxItemDefinition,
+} from '../../../../shared/contracts/lootboxes';
+import {
+  InventoryRepository,
+  isCosmeticSlot,
+  validateUserId,
+} from '../inventory/inventory-repository';
 import { LootboxCatalogRepository } from './lootbox-catalog-repository';
 
 export interface OpenLootboxRequest {
@@ -57,6 +66,36 @@ export class LootboxService {
 
   async markAnnounced(redemptionId: string): Promise<void> {
     return this.inventory.markOpeningAnnounced(redemptionId);
+  }
+
+  async getEquippedCosmetics(): Promise<ChatCosmeticsByUserId> {
+    const [catalog, inventories] = await Promise.all([
+      this.catalog.getCatalog(),
+      this.inventory.list(),
+    ]);
+    const itemsById = new Map(catalog.items.map((item) => [item.id, item]));
+    const cosmeticsByUserId: ChatCosmeticsByUserId = {};
+
+    for (const inventory of inventories) {
+      const cosmetics: Partial<Record<CosmeticSlot, string>> = {};
+
+      for (const [slot, itemId] of Object.entries(inventory.equippedCosmetics)) {
+        if (!isCosmeticSlot(slot)) {
+          continue;
+        }
+
+        const item = itemsById.get(itemId);
+        if (item?.cosmetic.slot === slot) {
+          cosmetics[slot] = item.cosmetic.value;
+        }
+      }
+
+      if (Object.keys(cosmetics).length > 0) {
+        cosmeticsByUserId[inventory.userId] = cosmetics;
+      }
+    }
+
+    return cosmeticsByUserId;
   }
 }
 

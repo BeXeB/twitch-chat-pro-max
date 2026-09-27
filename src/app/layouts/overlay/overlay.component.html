@@ -5,9 +5,28 @@
 >
   <section class="overlay-chat" aria-label="Live chat">
     @for (message of messages(); track message.id) {
-      <p class="overlay-message">
-        <strong [style.color]="message.color ?? null">{{ message.displayName }}</strong>
-        <span>: {{ message.message }}</span>
+      <p
+        class="overlay-message"
+        [class.overlay-message--border-neon]="
+          borderClassFor(message.userId) === 'overlay-message--border-neon'
+        "
+        [class.overlay-message--border-ornate]="
+          borderClassFor(message.userId) === 'overlay-message--border-ornate'
+        "
+        [class.overlay-message--border-starlight]="
+          borderClassFor(message.userId) === 'overlay-message--border-starlight'
+        "
+        [style.--message-border-color]="cosmeticsFor(message.userId)['border-color'] ?? null"
+        [style.animation-name]="entryAnimationFor(message.id, message.userId)"
+      >
+        <strong
+          [style.color]="cosmeticsFor(message.userId)['username-color'] ?? message.color ?? null"
+        >
+          {{ message.displayName }}
+        </strong>
+        <span [style.color]="cosmeticsFor(message.userId)['message-color'] ?? null">
+          : {{ message.message }}
+        </span>
       </p>
     }
   </section>

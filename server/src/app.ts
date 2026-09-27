@@ -143,6 +143,8 @@ export function createApp(): FastifyInstance {
 
   app.get('/api/runtime/status', async () => localRuntime.getStatus());
 
+  app.get('/api/chat/cosmetics', async () => localRuntime.getChatCosmetics());
+
   app.get('/api/automations', async () => automationRepository.list());
 
   app.put<{ Body: unknown; Params: AutomationRouteParameters }>(

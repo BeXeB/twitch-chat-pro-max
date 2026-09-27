@@ -1,6 +1,9 @@
 import {
-  CosmeticSlot,
+  isChatBorderStyle,
+  isChatEntryEffect,
   LootboxCatalogDocument,
+  LootboxCosmetic,
+  LootboxItemDefinition,
   LootboxRarity,
 } from '../../../../shared/contracts/lootboxes';
 
@@ -129,12 +132,7 @@ export function isLootboxCatalogDocument(value: unknown): value is LootboxCatalo
   });
 }
 
-function isLootboxItem(value: unknown): value is {
-  cosmetic: { slot: CosmeticSlot; value: string };
-  id: string;
-  name: string;
-  rarity: LootboxRarity;
-} {
+function isLootboxItem(value: unknown): value is LootboxItemDefinition {
   return (
     isRecord(value) &&
     isId(value['id']) &&
@@ -144,7 +142,7 @@ function isLootboxItem(value: unknown): value is {
   );
 }
 
-function isLootboxCosmetic(value: unknown): value is { slot: CosmeticSlot; value: string } {
+function isLootboxCosmetic(value: unknown): value is LootboxCosmetic {
   if (!isRecord(value) || typeof value['value'] !== 'string') {
     return false;
   }
@@ -155,16 +153,9 @@ function isLootboxCosmetic(value: unknown): value is { slot: CosmeticSlot; value
     case 'border-color':
       return /^#[\da-fA-F]{6}$/.test(value['value']);
     case 'border-style':
-      return (
-        value['value'] === 'starlight' || value['value'] === 'neon' || value['value'] === 'ornate'
-      );
+      return isChatBorderStyle(value['value']);
     case 'entry-effect':
-      return (
-        value['value'] === 'fade-in' ||
-        value['value'] === 'slide-in' ||
-        value['value'] === 'bounce-in' ||
-        value['value'] === 'drift-up'
-      );
+      return isChatEntryEffect(value['value']);
     default:
       return false;
   }

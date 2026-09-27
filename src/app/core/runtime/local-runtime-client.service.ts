@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
+import { ChatCosmeticsByUserId } from '../../../../shared/contracts/lootboxes';
 import {
   ApplicationEvent,
   RuntimeSnapshot,
@@ -29,6 +30,10 @@ export class LocalRuntimeClient {
   readonly error = signal<string | null>(null);
 
   readonly recentEvents = signal<ApplicationEvent[]>([]);
+
+  readonly chatCosmetics = signal<ChatCosmeticsByUserId>({});
+
+  readonly animatedChatMessageId = signal<string | null>(null);
 
   readonly viewState = signal<RuntimeViewState>({
     alerts: [],
@@ -79,6 +84,13 @@ export class LocalRuntimeClient {
   closeEventStream(): void {
     this.eventSource?.close();
     this.eventSource = null;
+  }
+
+  async loadChatCosmetics(): Promise<void> {
+    const cosmetics = await firstValueFrom(
+      this.http.get<ChatCosmeticsByUserId>('/api/chat/cosmetics'),
+    );
+    this.chatCosmetics.set(cosmetics);
   }
 
   getAutomations(): Promise<AutomationDefinition[]> {
@@ -287,10 +299,22 @@ export class LocalRuntimeClient {
     }
 
     this.recentEvents.update((events) => [...events, message.event].slice(-100));
+    if (message.event.type === 'twitch.channel.chat.message') {
+      const previousIds = new Set(
+        this.viewState().chatMessages.map((chatMessage) => chatMessage.id),
+      );
+      const newMessage = message.viewState.chatMessages.find(
+        (chatMessage) => !previousIds.has(chatMessage.id),
+      );
+      if (newMessage) {
+        this.animatedChatMessageId.set(newMessage.id);
+      }
+    }
     this.viewState.set(message.viewState);
   }
 
   private applySnapshot(snapshot: RuntimeSnapshot): void {
+    this.animatedChatMessageId.set(null);
     this.status.set(snapshot.status);
     this.recentEvents.set(snapshot.recentEvents);
     this.viewState.set(snapshot.viewState);
