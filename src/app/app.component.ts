@@ -11,21 +11,12 @@ import { LocalRuntimeClient } from './core/runtime/local-runtime-client.service'
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  constructor(
-    private readonly localRuntimeClient: LocalRuntimeClient,
-  ) {}
+  constructor(readonly localRuntimeClient: LocalRuntimeClient) {}
 
   ngOnInit(): void {
     void this.localRuntimeClient
       .refreshStatus()
       .then(() => {
-        const runtimeStatus = this.localRuntimeClient.status();
-
-        if (runtimeStatus?.authorizationState === 'unauthenticated') {
-          window.location.href = '/api/auth/twitch/login';
-          return;
-        }
-
         this.localRuntimeClient.openEventStream();
       })
       .catch(() => undefined);

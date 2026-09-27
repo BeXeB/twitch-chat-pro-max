@@ -37,10 +37,12 @@ interface EventSubSubscriptionDefinition {
   version: string;
 }
 
-const subscriptionDefinitions = (
+export const getEventSubSubscriptionDefinitions = (
   broadcasterId: string,
-): EventSubSubscriptionDefinition[] => [
-  {
+  eventSubUrl: string,
+): EventSubSubscriptionDefinition[] => {
+  const definitions: EventSubSubscriptionDefinition[] = [
+    {
     type: 'channel.chat.message',
     version: '1',
     condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
@@ -108,7 +110,17 @@ const subscriptionDefinitions = (
     version: '2',
     condition: { broadcaster_user_id: broadcasterId },
   },
-];
+  ];
+  const hostname = new URL(eventSubUrl).hostname;
+
+  if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
+    return definitions.filter(
+      (definition) => definition.type !== 'channel.chat.message',
+    );
+  }
+
+  return definitions;
+};
 
 export class EventSubClient {
   private keepaliveTimeoutMs: number | null = null;
@@ -291,13 +303,19 @@ export class EventSubClient {
       throw new Error('Twitch EventSub is missing connection context.');
     }
 
-    for (const subscription of subscriptionDefinitions(
+    for (const subscription of getEventSubSubscriptionDefinitions(
       this.sessionContext.broadcasterId,
+      this.eventSubUrl,
     )) {
-      await this.api.createEventSubSubscription(
-        subscription,
-        sessionId,
-      );
+      try {
+        await this.api.createEventSubSubscription(subscription, sessionId);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown subscription error.';
+        throw new Error(
+          `Twitch EventSub subscription ${subscription.type} v${subscription.version} failed: ${message}`,
+        );
+      }
     }
   }
 

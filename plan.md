@@ -28,7 +28,7 @@ Replace the core Twitch and Streamer.bot workflow features with a local Angular 
 - Normalized application events with correlation and causation fields.
 - Bounded backend chat, alert, stream-state, and recent-event projections.
 - SSE snapshots and deltas for all browser windows and OBS sources.
-- Angular local-runtime client and a compatibility path that mirrors projected chat, alerts, and stream state into the existing `TwitchService` observables when local mode is enabled.
+- Angular local-runtime client consumes backend snapshots and deltas directly for chat, alerts, and stream state.
 
 ### Automation Foundation
 
@@ -67,7 +67,7 @@ Replace the core Twitch and Streamer.bot workflow features with a local Angular 
 - A shared backend `TwitchOperationsService` owns Helix calls used by automation actions and local HTTP intents.
 - Local intent APIs cover chat, timeout/ban/unban, message deletion, chat settings, shoutouts, rewards/redemptions, polls, predictions, and stream metadata.
 - Custom rewards support typed create/update/delete and refresh the synchronized reward catalog; deleting a reward also removes its mapping.
-- Angular `LocalRuntimeClient` exposes typed operation methods. Monitor moderation controls now use it directly; the `TwitchService` compatibility methods forward to it in local mode.
+- Angular `LocalRuntimeClient` exposes typed operation methods used by monitor moderation controls.
 - Development and production default to local runtime mode; the companion starts OAuth when configured but unauthenticated. Twitch API errors are returned as typed local HTTP errors.
 
 ### Layouts

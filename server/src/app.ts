@@ -533,7 +533,7 @@ export function createApp(): FastifyInstance {
 
 function sendTwitchAuthError(reply: FastifyReply, error: unknown): FastifyReply {
   const message =
-    error instanceof TwitchAuthError
+    error instanceof TwitchAuthError || error instanceof TwitchApiError
       ? error.message
       : 'Unable to complete Twitch authorization.';
 

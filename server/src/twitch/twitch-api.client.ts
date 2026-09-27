@@ -275,16 +275,19 @@ export class TwitchApiClient {
     },
     sessionId: string,
   ): Promise<void> {
-    await this.request<undefined>('/eventsub/subscriptions', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...subscription,
-        transport: {
-          method: 'websocket',
-          session_id: sessionId,
-        },
-      }),
-    });
+    await this.requestUrl<undefined>(
+      this.config.eventSubSubscriptionsUrl,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...subscription,
+          transport: {
+            method: 'websocket',
+            session_id: sessionId,
+          },
+        }),
+      },
+    );
   }
 
   async banUser({
@@ -562,13 +565,20 @@ export class TwitchApiClient {
     path: string,
     options: RequestInit = {},
   ): Promise<T> {
+    return this.requestUrl(`${this.config.helixUrl}${path}`, options);
+  }
+
+  private async requestUrl<T>(
+    url: string,
+    options: RequestInit = {},
+  ): Promise<T> {
     const accessToken = await this.twitchAuth.getAccessToken();
 
     if (!accessToken) {
       throw new TwitchApiError('Twitch authorization is required.', 401);
     }
 
-    let response = await this.sendRequest(accessToken, path, options);
+    let response = await this.sendRequest(accessToken, url, options);
 
     if (response.status === 401) {
       const refreshedAccessToken = await this.twitchAuth.refreshAccessToken();
@@ -577,14 +587,15 @@ export class TwitchApiClient {
         throw new TwitchApiError('Twitch authorization is required.', 401);
       }
 
-      response = await this.sendRequest(refreshedAccessToken, path, options);
+      response = await this.sendRequest(refreshedAccessToken, url, options);
     }
 
     const text = await response.text();
 
     if (!response.ok) {
+      const upstreamMessage = getUpstreamErrorMessage(text);
       throw new TwitchApiError(
-        `Twitch Helix request failed with status ${response.status}.`,
+        `Twitch API request failed with status ${response.status}${upstreamMessage ? `: ${upstreamMessage}` : '.'}`,
         response.status,
       );
     }
@@ -598,13 +609,13 @@ export class TwitchApiClient {
 
   private async sendRequest(
     accessToken: string,
-    path: string,
+    url: string,
     options: RequestInit,
   ): Promise<Response> {
     let response: Response;
 
     try {
-      response = await fetch(`${this.config.helixUrl}${path}`, {
+      response = await fetch(url, {
         ...options,
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -619,6 +630,25 @@ export class TwitchApiClient {
 
     return response;
   }
+}
+
+function getUpstreamErrorMessage(text: string): string | null {
+  try {
+    const payload: unknown = JSON.parse(text);
+
+    if (
+      typeof payload === 'object' &&
+      payload !== null &&
+      'message' in payload &&
+      typeof payload.message === 'string'
+    ) {
+      return payload.message;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function createModerationParameters(

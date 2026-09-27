@@ -25,6 +25,7 @@ export interface TwitchOAuthConfig {
   clientId: string;
   clientSecret: string;
   eventSubUrl: string;
+  eventSubSubscriptionsUrl: string;
   frontendOrigin: string;
   helixUrl: string;
   redirectUri: string;
@@ -48,21 +49,43 @@ export function loadRuntimeConfig(
     return { dataDirectory, twitchOAuth: null };
   }
 
+  const eventSubUrl =
+    environment['TWITCH_EVENTSUB_URL'] ??
+    'wss://eventsub.wss.twitch.tv/ws';
+  const helixUrl =
+    environment['TWITCH_HELIX_URL'] ?? 'https://api.twitch.tv/helix';
+
   return {
     dataDirectory,
     twitchOAuth: {
       clientId,
       clientSecret,
-      eventSubUrl:
-        environment['TWITCH_EVENTSUB_URL'] ??
-        'wss://eventsub.wss.twitch.tv/ws',
+      eventSubUrl,
+      eventSubSubscriptionsUrl: getEventSubSubscriptionsUrl(
+        eventSubUrl,
+        helixUrl,
+      ),
       frontendOrigin:
         environment['TWITCH_FRONTEND_ORIGIN'] ?? 'http://localhost:4200',
-      helixUrl: environment['TWITCH_HELIX_URL'] ?? 'https://api.twitch.tv/helix',
+      helixUrl,
       redirectUri:
         environment['TWITCH_REDIRECT_URI'] ??
         'http://127.0.0.1:4300/api/auth/twitch/callback',
       scopes: twitchScopes,
     },
   };
+}
+
+function getEventSubSubscriptionsUrl(
+  eventSubUrl: string,
+  helixUrl: string,
+): string {
+  const endpoint = new URL(eventSubUrl);
+
+  if (endpoint.hostname === 'eventsub.wss.twitch.tv') {
+    return `${helixUrl}/eventsub/subscriptions`;
+  }
+
+  const protocol = endpoint.protocol === 'wss:' ? 'https:' : 'http:';
+  return `${protocol}//${endpoint.host}/eventsub/subscriptions`;
 }

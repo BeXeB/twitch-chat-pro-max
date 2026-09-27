@@ -20,6 +20,8 @@ const config: TwitchOAuthConfig = {
   clientId: 'client-id',
   clientSecret: 'client-secret',
   eventSubUrl: 'wss://eventsub.example.test/ws',
+  eventSubSubscriptionsUrl:
+    'https://api.example.test/helix/eventsub/subscriptions',
   frontendOrigin: 'http://localhost:4200',
   helixUrl: 'https://api.example.test/helix',
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',

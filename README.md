@@ -5,7 +5,7 @@ A local Angular control panel and Fastify companion for Twitch chat, moderation,
 ## Run locally
 
 1. Install dependencies with `npm install`.
-2. Copy `.env.example` to `.env`, then set `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`. Register the callback URL in the Twitch developer console.
+2. Copy `.env.example` to `.env`, then set `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`. The client ID is prefilled with this app's public Twitch client ID. Register the callback URL in the Twitch developer console.
 3. Run `npm start`.
 
 The launcher starts the Fastify companion first, waits for its health endpoint, then starts Angular with an API proxy. It stops both child processes together when interrupted. Open `http://127.0.0.1:4200`.
@@ -14,7 +14,7 @@ If the credentials are not configured, both processes still start, but Twitch op
 
 ### Ports and local data
 
-Defaults are `127.0.0.1:4300` for Fastify and `127.0.0.1:4200` for Angular. Override them with `TWITCH_RUNTIME_HOST`, `TWITCH_RUNTIME_PORT`, `TWITCH_FRONTEND_HOST`, and `TWITCH_FRONTEND_PORT`. When changing ports, update `TWITCH_REDIRECT_URI` and `TWITCH_FRONTEND_ORIGIN` to match. The launcher generates a temporary Angular proxy configuration for the selected companion port. `TWITCH_RUNTIME_DATA_DIR` changes the local persistence directory.
+Defaults are `127.0.0.1:4300` for Fastify and `127.0.0.1:4200` for Angular. Override them with `TWITCH_RUNTIME_HOST`, `TWITCH_RUNTIME_PORT`, `TWITCH_FRONTEND_HOST`, and `TWITCH_FRONTEND_PORT`. When changing ports, update `TWITCH_REDIRECT_URI` and `TWITCH_FRONTEND_ORIGIN` to match. `TWITCH_EVENTSUB_URL` selects the EventSub WebSocket; the companion derives the matching subscription endpoint, so switch this one value between Twitch's live URL and the local CLI mock URL. `TWITCH_HELIX_URL` remains the Helix API endpoint. The launcher generates a temporary Angular proxy configuration for the selected companion port. `TWITCH_RUNTIME_DATA_DIR` changes the local persistence directory. Twitch credentials and endpoints are server-side; the Angular build does not contain them.
 
 Angular reloads browser code as it changes. The companion runs directly under the supervisor; restart `npm start` after editing server code.
 

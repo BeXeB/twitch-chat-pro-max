@@ -71,7 +71,7 @@ All three routes read the same Angular `LocalRuntimeClient` signal store. Every 
 6. For a mapped channel-point redemption, the reward router invokes only the mapping's redemption-triggered automation, then follows its completion policy.
 7. The automation engine evaluates matching definitions. A command event specifies its target automation ID, so only that definition runs. It uses trigger, condition, cooldown, and action registries instead of a central action switch.
 8. The runtime broadcasts each event and its updated view state to all SSE clients.
-9. Angular signal stores apply the snapshot or delta. The monitor derives its chat and alert streams directly from the shared view signal; other legacy consumers can still use the `TwitchService` compatibility facade.
+9. Angular signal stores apply the snapshot or delta. The monitor derives its chat and alert streams directly from the shared view signal.
 
 ## Commands
 
@@ -103,7 +103,7 @@ On redemption, the router runs only the mapped automation. It updates Twitch onl
 
 `TwitchOperationsService` is the backend feature boundary for Helix mutations and stream metadata reads. Automation action handlers and Fastify intent routes both use this service, so the dashboard and automations share the same connected broadcaster identity, token refresh behavior, and error handling.
 
-The Angular `LocalRuntimeClient` provides typed methods for chat messages/settings, timeout/ban/unban, chat deletion, shoutouts, custom reward CRUD, redemption completion, polls, predictions, and stream information. The monitor's current moderation controls use these methods. `TwitchService` remains as a read-model compatibility facade and forwards its operation methods to the local client in the default local mode; it does not expose the backend token.
+The Angular `LocalRuntimeClient` provides typed methods for chat messages/settings, timeout/ban/unban, chat deletion, shoutouts, custom reward CRUD, redemption completion, polls, predictions, and stream information. The monitor's current moderation controls use these methods. Twitch credentials and API endpoint configuration remain in the companion process and are never bundled into Angular.
 
 ## Persistence
 

@@ -24,6 +24,8 @@ const config: TwitchOAuthConfig = {
   clientId: 'client-id',
   clientSecret: 'client-secret',
   eventSubUrl: 'wss://eventsub.example.test/ws',
+  eventSubSubscriptionsUrl:
+    'https://api.example.test/helix/eventsub/subscriptions',
   frontendOrigin: 'http://localhost:4200',
   helixUrl: 'https://api.example.test/helix',
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',
@@ -224,6 +226,80 @@ test('times out a user through the companion Helix client', async () => {
         path: '/helix/moderation/bans?broadcaster_id=broadcaster-id&moderator_id=moderator-id',
       },
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('sends EventSub subscriptions to the configured subscription endpoint', async () => {
+  const subscriptionUrl = 'http://localhost:8080/eventsub/subscriptions';
+  const subscriptionConfig = {
+    ...config,
+    eventSubSubscriptionsUrl: subscriptionUrl,
+  };
+  const store = new MemoryRefreshTokenStore();
+  const twitchAuth = new TwitchAuthService(subscriptionConfig, store);
+  const twitchApi = new TwitchApiClient(subscriptionConfig, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  let subscriptionRequest: {
+    body: unknown;
+    method: string;
+    url: string;
+  } | null = null;
+
+  globalThis.fetch = (async (input, init) => {
+    const url = String(input);
+
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: [],
+        token_type: 'bearer',
+      });
+    }
+
+    if (url === subscriptionUrl) {
+      subscriptionRequest = {
+        body: JSON.parse(String(init?.body)),
+        method: init?.method ?? 'GET',
+        url,
+      };
+      return new Response(null, { status: 204 });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+    const state = authorizationUrl.searchParams.get('state');
+
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+    await twitchApi.createEventSubSubscription(
+      {
+        condition: { broadcaster_user_id: 'broadcaster-id' },
+        type: 'stream.online',
+        version: '1',
+      },
+      'mock-session-id',
+    );
+
+    assert.deepEqual(subscriptionRequest, {
+      body: {
+        condition: { broadcaster_user_id: 'broadcaster-id' },
+        transport: {
+          method: 'websocket',
+          session_id: 'mock-session-id',
+        },
+        type: 'stream.online',
+        version: '1',
+      },
+      method: 'POST',
+      url: subscriptionUrl,
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }

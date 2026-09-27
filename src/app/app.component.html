@@ -1,1 +1,16 @@
+@if (localRuntimeClient.status(); as status) {
+	@if (status.authorizationState === "unconfigured") {
+		<div class="runtime-auth-notice" role="status">
+			<span>Twitch credentials are not configured. Add them to the backend .env file and restart.</span>
+		</div>
+	} @else if (
+		status.authorizationState === "unauthenticated" ||
+		status.connectionState === "reauth-required"
+	) {
+		<div class="runtime-auth-notice" role="status">
+			<span>Twitch is not connected.</span>
+			<a href="/api/auth/twitch/login">Connect Twitch</a>
+		</div>
+	}
+}
 <router-outlet></router-outlet>
