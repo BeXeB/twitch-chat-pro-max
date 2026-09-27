@@ -9,7 +9,11 @@
         <span>OFFLINE</span>
       }
     </div>
-    <!-- Additional stream info can go here -->
+    <nav class="layout-links" aria-label="Layouts">
+      <a class="selected" routerLink="/monitor">Monitor</a>
+      <a routerLink="/dashboard">Dashboard</a>
+      <a routerLink="/overlay" target="_blank" rel="noreferrer">Overlay</a>
+    </nav>
   </header>
 
   @if (moderationFeedback; as feedback) {
@@ -29,6 +33,16 @@
         @for (alert of alerts$ | async; track alert.id) {
           <div class="alert" [class]="'alert-' + alert.type">
             @switch (alert.type) {
+              @case ("automation") {
+                <strong>
+                  {{ alert.data.title ?? 'Automation' }}
+                </strong>
+
+                <span>
+                  {{ alert.data.message }}
+                </span>
+              }
+
               @case ("follow") {
                 <strong>New Follow</strong>
 
@@ -109,7 +123,7 @@
         @for (message of messages$ | async; track message.id) {
           <div
             class="chat-message"
-            [class.deleted]="deletedMessageIds.has(message.id)"
+            [class.deleted]="viewState().deletedMessageIds.includes(message.id)"
           >
             <strong
               class="username"

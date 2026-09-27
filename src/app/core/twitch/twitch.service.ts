@@ -1,7 +1,8 @@
-import { Injectable } from '@angular/core';
+import { effect, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { LocalRuntimeClient } from '../runtime/local-runtime-client.service';
 import { ChatMessage } from './models/chat-message.model';
 import { TwitchUser } from './models/twitch-user.model';
 import { StreamState } from './models/stream-state.model';
@@ -102,7 +103,28 @@ export class TwitchService {
 
   readonly alerts$ = this.alertsSubject.asObservable();
 
+  constructor(private readonly localRuntimeClient: LocalRuntimeClient) {
+    if (environment.twitchRuntimeMode === 'local') {
+      effect(() => {
+        const runtimeStatus = this.localRuntimeClient.status();
+        const runtimeViewState = this.localRuntimeClient.viewState();
+
+        this.connectedSubject.next(
+          runtimeStatus?.connectionState === 'connected',
+        );
+        this.messagesSubject.next(runtimeViewState.chatMessages);
+        this.streamStateSubject.next(runtimeViewState.streamState);
+        this.alertsSubject.next(runtimeViewState.alerts);
+      });
+    }
+  }
+
   connectToTwitch(): void {
+    if (environment.twitchRuntimeMode === 'local') {
+      window.location.href = '/api/auth/twitch/login';
+      return;
+    }
+
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: this.redirectUri,
@@ -115,6 +137,12 @@ export class TwitchService {
   }
 
   async initialize(): Promise<void> {
+    if (environment.twitchRuntimeMode === 'local') {
+      await this.localRuntimeClient.refreshStatus();
+      this.localRuntimeClient.openEventStream();
+      return;
+    }
+
     if (environment.production === false) {
       //FOR TESTING PURPOSES
       this.startMockChatLoop();
@@ -142,6 +170,11 @@ export class TwitchService {
   }
 
   async connect(accessToken: string): Promise<void> {
+    if (environment.twitchRuntimeMode === 'local') {
+      await this.initialize();
+      return;
+    }
+
     this.accessToken = accessToken;
 
     const user = await this.getCurrentUser();
@@ -694,6 +727,10 @@ export class TwitchService {
   }
 
   async sendShoutout(targetBroadcasterId: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.sendShoutout(targetBroadcasterId);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -726,6 +763,17 @@ export class TwitchService {
     subscriberMode?: boolean;
     emoteMode?: boolean;
   }): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.updateChatSettings({
+        emoteMode: settings.emoteMode,
+        followerMode: settings.followerMode,
+        followerModeDurationMinutes: settings.followerModeDuration,
+        slowMode: settings.slowMode,
+        slowModeWaitTimeSeconds: settings.slowModeWaitTime,
+        subscriberMode: settings.subscriberMode,
+      });
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -769,6 +817,10 @@ export class TwitchService {
   }
 
   async sendChatMessage(message: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.sendChatMessage(message);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -790,6 +842,10 @@ export class TwitchService {
     duration: number,
     reason?: string,
   ): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.timeoutUser(userId, duration, reason);
+    }
+
     if (!this.currentUser) {
       return false;
     }
@@ -824,6 +880,10 @@ export class TwitchService {
   }
 
   async banUser(userId: string, reason?: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.banUser(userId, reason);
+    }
+
     if (!this.currentUser) {
       return false;
     }
@@ -856,6 +916,10 @@ export class TwitchService {
   }
 
   async unbanUser(userId: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.unbanUser(userId);
+    }
+
     if (!this.currentUser) {
       return false;
     }
@@ -877,6 +941,10 @@ export class TwitchService {
   }
 
   async deleteChatMessage(messageId: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.deleteChatMessage(messageId);
+    }
+
     if (!this.currentUser) {
       return false;
     }
@@ -898,6 +966,10 @@ export class TwitchService {
   }
 
   async getCustomRewards(): Promise<any[]> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.getCustomRewards();
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return [];
     }
@@ -928,6 +1000,23 @@ export class TwitchService {
       isMaxPerUserPerStreamEnabled?: boolean;
     } = {},
   ): Promise<any | null> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.createCustomReward({
+        title,
+        cost,
+        prompt: options.prompt,
+        enabled: options.enabled,
+        userInputRequired: options.userInputRequired,
+        backgroundColor: options.backgroundColor,
+        maxPerStream: options.maxPerStream,
+        maxPerUserPerStream: options.maxPerUserPerStream,
+        globalCooldownSeconds: options.globalCooldownSeconds,
+        isGlobalCooldownEnabled: options.isGlobalCooldownEnabled,
+        isMaxPerStreamEnabled: options.isMaxPerStreamEnabled,
+        isMaxPerUserPerStreamEnabled: options.isMaxPerUserPerStreamEnabled,
+      });
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return null;
     }
@@ -996,6 +1085,10 @@ export class TwitchService {
     rewardId: string,
     updates: Record<string, any>,
   ): Promise<any | null> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.updateCustomReward(rewardId, updates);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return null;
     }
@@ -1016,6 +1109,10 @@ export class TwitchService {
   }
 
   async deleteCustomReward(rewardId: string): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.deleteCustomReward(rewardId);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -1039,6 +1136,14 @@ export class TwitchService {
     redemptionIds: string[],
     status: 'FULFILLED' | 'CANCELED',
   ): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.updateRedemptionStatus(
+        rewardId,
+        redemptionIds,
+        status,
+      );
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -1066,6 +1171,10 @@ export class TwitchService {
   }
 
   async getStreamInfo(): Promise<any | null> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.getStreamInfo();
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return null;
     }
@@ -1083,6 +1192,10 @@ export class TwitchService {
     choices: string[],
     durationSeconds = 60,
   ): Promise<any | null> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.createPoll(title, choices, durationSeconds);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return null;
     }
@@ -1104,6 +1217,10 @@ export class TwitchService {
     pollId: string,
     status: 'TERMINATED' | 'ARCHIVED',
   ): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.endPoll(pollId, status);
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -1127,6 +1244,14 @@ export class TwitchService {
     outcomes: string[],
     durationSeconds = 120,
   ): Promise<any | null> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.createPrediction(
+        title,
+        outcomes,
+        durationSeconds,
+      );
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return null;
     }
@@ -1149,6 +1274,14 @@ export class TwitchService {
     status: 'RESOLVED' | 'CANCELED' | 'LOCKED',
     winningOutcomeId?: string,
   ): Promise<boolean> {
+    if (environment.twitchRuntimeMode === 'local') {
+      return this.localRuntimeClient.resolvePrediction(
+        predictionId,
+        status,
+        winningOutcomeId,
+      );
+    }
+
     if (!this.accessToken || !this.currentUser) {
       return false;
     }
@@ -1176,7 +1309,7 @@ export class TwitchService {
   }
 
   getAccessToken(): string | null {
-    return this.accessToken;
+    return null;
   }
 
   disconnect(): void {

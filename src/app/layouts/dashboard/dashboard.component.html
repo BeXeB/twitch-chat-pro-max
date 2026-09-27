@@ -1,0 +1,362 @@
+<main class="dashboard-page">
+  <header class="dashboard-topbar">
+    <a class="wordmark" routerLink="/dashboard" aria-label="Twitch Chat Pro Max dashboard">TCPM <span>CONTROL</span></a>
+    <nav class="layout-links" aria-label="Layouts">
+      <a routerLink="/monitor">Monitor</a>
+      <a routerLink="/overlay" target="_blank" rel="noreferrer">Overlay</a>
+      <a class="selected" routerLink="/dashboard">Dashboard</a>
+    </nav>
+    <button class="refresh-button" type="button" (click)="refresh()" [disabled]="loading() || busy()">
+      {{ loading() ? 'Refreshing' : 'Refresh' }}
+    </button>
+  </header>
+
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">LOCAL RUNTIME / OPERATIONS</p>
+      <h1>Dashboard</h1>
+    </div>
+    <div class="runtime-badge" [class.connected]="runtimeStatus()?.connectionState === 'connected'">
+      <span class="status-light"></span>
+      {{ runtimeStatus()?.connectionState ?? 'unavailable' }}
+      <span class="runtime-separator">/</span>
+      {{ runtimeStatus()?.broadcaster?.displayName ?? 'No broadcaster' }}
+    </div>
+  </section>
+
+  @if (notice(); as currentNotice) {
+    <p class="notice" [class.notice-error]="currentNotice.tone === 'error'" role="status">
+      {{ currentNotice.message }}
+      <button type="button" aria-label="Dismiss message" (click)="notice.set(null)">Dismiss</button>
+    </p>
+  }
+
+  <div class="dashboard-layout">
+    <nav class="section-nav" aria-label="Dashboard sections">
+      @for (section of sections; track section) {
+        <button
+          type="button"
+          [class.active]="activeSection() === section"
+          (click)="activeSection.set(section)"
+        >
+          <span class="section-index">0{{ $index + 1 }}</span>
+          {{ section }}
+        </button>
+      }
+    </nav>
+
+    <section class="workspace" aria-live="polite">
+      @if (activeSection() === 'overview') {
+        <section class="overview-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">LIVE SNAPSHOT</p>
+              <h2>Runtime overview</h2>
+            </div>
+            <button class="text-button" type="button" (click)="refresh()" [disabled]="loading()">Reload data</button>
+          </div>
+          <div class="metric-strip">
+            <div class="metric">
+              <span>STREAM</span>
+              <strong>{{ viewState().streamState }}</strong>
+            </div>
+            <div class="metric">
+              <span>VIEWERS</span>
+              <strong>{{ streamInfo()?.viewerCount ?? '—' }}</strong>
+            </div>
+            <div class="metric">
+              <span>CHAT BUFFER</span>
+              <strong>{{ viewState().chatMessages.length }}</strong>
+            </div>
+            <div class="metric">
+              <span>ALERT BUFFER</span>
+              <strong>{{ viewState().alerts.length }}</strong>
+            </div>
+            <div class="metric">
+              <span>EVENTS</span>
+              <strong>{{ runtime.recentEvents().length }}</strong>
+            </div>
+          </div>
+          <div class="stream-summary">
+            <div>
+              <span class="field-kicker">TITLE</span>
+              <strong>{{ streamInfo()?.title ?? 'Stream details unavailable' }}</strong>
+            </div>
+            <div>
+              <span class="field-kicker">CATEGORY</span>
+              <strong>{{ streamInfo()?.gameName || 'Not live' }}</strong>
+            </div>
+            <div>
+              <span class="field-kicker">STARTED</span>
+              <strong>{{ streamInfo()?.startedAt ? (streamInfo()?.startedAt | date: 'shortTime') : '—' }}</strong>
+            </div>
+          </div>
+          <div class="event-list">
+            <div class="subsection-heading">
+              <h3>Recent runtime events</h3>
+              <span>{{ runtime.recentEvents().length }} / 100</span>
+            </div>
+            @for (event of runtime.recentEvents().slice().reverse().slice(0, 12); track event.id) {
+              <div class="event-row">
+                <time>{{ event.occurredAt | date: 'HH:mm:ss' }}</time>
+                <span class="event-source">{{ event.source }}</span>
+                <strong>{{ eventTypeLabel(event.type) }}</strong>
+              </div>
+            } @empty {
+              <p class="empty-state">Waiting for runtime events.</p>
+            }
+          </div>
+        </section>
+      }
+
+      @if (activeSection() === 'automations') {
+        <section class="configuration-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">TRIGGER / CONDITION / ACTION</p>
+              <h2>Automations</h2>
+            </div>
+            <span class="count-label">{{ automations().length }} definitions</span>
+          </div>
+          <form class="editor-form" (ngSubmit)="createAutomation()">
+            <label>Automation name
+              <input name="automationName" [(ngModel)]="automationName" maxlength="80" required placeholder="Welcome new followers">
+            </label>
+            <label>Trigger event
+              <select name="automationTrigger" [(ngModel)]="automationTrigger">
+                @for (eventType of triggerTypes; track eventType) {
+                  <option [value]="eventType">{{ eventTypeLabel(eventType) }}</option>
+                }
+              </select>
+            </label>
+            <label>Action
+              <select name="automationActionType" [(ngModel)]="automationActionType">
+                <option value="show-alert">Show alert</option>
+                <option value="send-chat">Send chat message</option>
+                <option value="emit-runtime-event">Emit automation event</option>
+              </select>
+            </label>
+            <label class="wide-field">{{ automationActionType === 'emit-runtime-event' ? 'Event payload label' : 'Action text' }}
+              <input name="automationActionValue" [(ngModel)]="automationActionValue" maxlength="500" required>
+            </label>
+            <button class="primary-button" type="submit" [disabled]="busy()">Create automation</button>
+          </form>
+
+          <div class="definition-list">
+            @for (automation of automations(); track automation.id) {
+              <article class="definition-row">
+                <div class="definition-main">
+                  <strong>{{ automation.name }}</strong>
+                  <span>{{ eventTypeLabel(automation.trigger.eventType) }}</span>
+                </div>
+                <div class="definition-meta">
+                  <span>{{ automation.actions.length }} action{{ automation.actions.length === 1 ? '' : 's' }}</span>
+                  <span [class.disabled-state]="!automation.enabled">{{ automation.enabled ? 'enabled' : 'disabled' }}</span>
+                </div>
+                <div class="row-actions">
+                  <button class="text-button" type="button" (click)="toggleAutomation(automation)" [disabled]="busy()">{{ automation.enabled ? 'Disable' : 'Enable' }}</button>
+                  <button class="text-button danger-text" type="button" (click)="deleteAutomation(automation)" [disabled]="busy()">Delete</button>
+                </div>
+              </article>
+            } @empty {
+              <p class="empty-state">No automations configured.</p>
+            }
+          </div>
+        </section>
+      }
+
+      @if (activeSection() === 'commands') {
+        <section class="configuration-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">CHAT COMMANDS</p>
+              <h2>Commands</h2>
+            </div>
+            <span class="count-label">{{ commands().length }} definitions</span>
+          </div>
+          <form class="editor-form command-form" (ngSubmit)="createCommand()">
+            <label>Command name
+              <span class="prefix-input"><b>!</b><input name="commandName" [(ngModel)]="commandName" maxlength="32" required placeholder="rules"></span>
+            </label>
+            <label>Aliases <span class="optional-label">comma separated</span>
+              <input name="commandAliases" [(ngModel)]="commandAliases" placeholder="about, info">
+            </label>
+            <label>Required role
+              <select name="commandRole" [(ngModel)]="commandRole">
+                @for (role of commandRoles; track role) { <option [value]="role">{{ role }}</option> }
+              </select>
+            </label>
+            <label>Arguments
+              <select name="commandArgumentPolicy" [(ngModel)]="commandArgumentPolicy">
+                <option value="none">None</option>
+                <option value="optional">Optional</option>
+                <option value="required">Required</option>
+              </select>
+            </label>
+            <label>Target automation
+              <select name="commandAutomationId" [(ngModel)]="commandAutomationId" required>
+                <option value="">Choose automation</option>
+                @for (automation of commandAutomations(); track automation.id) {
+                  <option [value]="automation.id">{{ automation.name }}</option>
+                }
+              </select>
+            </label>
+            <label>Cooldown seconds
+              <input name="commandCooldownSeconds" type="number" min="0" max="86400" [(ngModel)]="commandCooldownSeconds">
+            </label>
+            <label>Cooldown scope
+              <select name="commandCooldownScope" [(ngModel)]="commandCooldownScope">
+                <option value="user">Per user</option>
+                <option value="global">Global</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit" [disabled]="busy()">Create command</button>
+          </form>
+          <div class="definition-list">
+            @for (command of commands(); track command.id) {
+              <article class="definition-row">
+                <div class="definition-main">
+                  <strong>!{{ command.name }}</strong>
+                  <span>{{ command.aliases.length ? 'Aliases: ' + command.aliases.join(', ') : 'No aliases' }}</span>
+                </div>
+                <div class="definition-meta">
+                  <span>{{ command.requiredRole }}</span>
+                  <span>{{ command.argumentPolicy }} args</span>
+                  <span [class.disabled-state]="!command.enabled">{{ command.enabled ? 'enabled' : 'disabled' }}</span>
+                </div>
+                <div class="row-actions">
+                  <button class="text-button" type="button" (click)="toggleCommand(command)" [disabled]="busy()">{{ command.enabled ? 'Disable' : 'Enable' }}</button>
+                  <button class="text-button danger-text" type="button" (click)="deleteCommand(command)" [disabled]="busy()">Delete</button>
+                </div>
+              </article>
+            } @empty {
+              <p class="empty-state">No commands configured.</p>
+            }
+          </div>
+        </section>
+      }
+
+      @if (activeSection() === 'rewards') {
+        <section class="configuration-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">CHANNEL POINTS</p>
+              <h2>Rewards</h2>
+            </div>
+            <button class="text-button" type="button" (click)="syncRewards()" [disabled]="busy()">Sync from Twitch</button>
+          </div>
+          <div class="reward-create-row">
+            <label>New reward title
+              <input name="rewardTitle" [(ngModel)]="rewardTitle" maxlength="45" placeholder="Highlight message">
+            </label>
+            <label>Cost
+              <input name="rewardCost" type="number" min="1" [(ngModel)]="rewardCost">
+            </label>
+            <button class="primary-button" type="button" (click)="createReward()" [disabled]="busy()">Create reward</button>
+          </div>
+          <div class="mapping-editor">
+            <div class="subsection-heading"><h3>Redemption mapping</h3><span>one automation per reward</span></div>
+            <div class="mapping-fields">
+              <label>Reward
+                <select name="selectedRewardId" [(ngModel)]="selectedRewardId">
+                  <option value="">Choose reward</option>
+                  @for (reward of rewards(); track reward.id) { <option [value]="reward.id">{{ reward.title }} · {{ reward.cost }} pts</option> }
+                </select>
+              </label>
+              <label>Automation
+                <select name="rewardAutomationId" [(ngModel)]="rewardAutomationId">
+                  <option value="">Choose automation</option>
+                  @for (automation of rewardAutomations(); track automation.id) { <option [value]="automation.id">{{ automation.name }}</option> }
+                </select>
+              </label>
+              <label>Completion policy
+                <select name="rewardCompletionPolicy" [(ngModel)]="rewardCompletionPolicy">
+                  @for (policy of completionPolicies; track policy) { <option [value]="policy">{{ policy }}</option> }
+                </select>
+              </label>
+              <button class="primary-button" type="button" (click)="saveRewardMapping()" [disabled]="busy()">Save mapping</button>
+            </div>
+            <div class="mapping-list">
+              @for (mapping of rewardMappings(); track mapping.rewardId) {
+                <article class="definition-row">
+                  <div class="definition-main">
+                    <strong>{{ rewardTitleFor(mapping.rewardId) }}</strong>
+                    <span>{{ automationNameFor(mapping.automationId) }}</span>
+                  </div>
+                  <div class="definition-meta"><span>{{ mapping.completionPolicy }}</span></div>
+                  <button class="text-button danger-text" type="button" (click)="deleteRewardMapping(mapping)" [disabled]="busy()">Remove</button>
+                </article>
+              } @empty {
+                <p class="empty-state">No reward mappings configured.</p>
+              }
+            </div>
+          </div>
+          <div class="reward-list">
+            <div class="subsection-heading"><h3>Reward catalog</h3><span>{{ rewards().length }} rewards</span></div>
+            @for (reward of rewards(); track reward.id) {
+              <article class="reward-row">
+                <span class="reward-swatch" [style.backgroundColor]="reward.backgroundColor ?? '#3b82f6'"></span>
+                <strong>{{ reward.title }}</strong>
+                <span>{{ reward.cost }} points</span>
+                <span>{{ reward.isEnabled ? 'enabled' : 'disabled' }}</span>
+              </article>
+            } @empty {
+              <p class="empty-state">No rewards loaded. Synchronize after connecting Twitch.</p>
+            }
+          </div>
+        </section>
+      }
+
+      @if (activeSection() === 'operations') {
+        <section class="configuration-section">
+          <div class="section-title-row">
+            <div>
+              <p class="eyebrow">BROADCASTER INTENTS</p>
+              <h2>Operations</h2>
+            </div>
+          </div>
+          <div class="operations-grid">
+            <section class="operation-block">
+              <h3>Send chat message</h3>
+              <form class="inline-form" (ngSubmit)="sendChat()">
+                <input name="chatMessage" [(ngModel)]="chatMessage" maxlength="500" placeholder="Message your chat">
+                <button class="primary-button" type="submit" [disabled]="busy()">Send</button>
+              </form>
+            </section>
+            <section class="operation-block">
+              <h3>Chat settings</h3>
+              <label class="toggle-row"><input name="slowMode" type="checkbox" [(ngModel)]="slowMode">Slow mode</label>
+              @if (slowMode) {
+                <label>Wait seconds<input name="slowModeWait" type="number" min="1" max="120" [(ngModel)]="slowModeWaitTimeSeconds"></label>
+              }
+              <label class="toggle-row"><input name="followerMode" type="checkbox" [(ngModel)]="followerMode">Follower-only mode</label>
+              @if (followerMode) {
+                <label>Follow duration minutes<input name="followerWait" type="number" min="0" max="129600" [(ngModel)]="followerModeDurationMinutes"></label>
+              }
+              <button class="text-button" type="button" (click)="saveChatSettings()" [disabled]="busy()">Apply settings</button>
+            </section>
+            <section class="operation-block">
+              <h3>Shoutout</h3>
+              <label>Target broadcaster ID<input name="shoutoutTarget" [(ngModel)]="shoutoutBroadcasterId" placeholder="Twitch user ID"></label>
+              <button class="text-button" type="button" (click)="sendShoutout()" [disabled]="busy()">Send shoutout</button>
+            </section>
+            <section class="operation-block">
+              <h3>Create poll</h3>
+              <label>Title<input name="pollTitle" [(ngModel)]="pollTitle" maxlength="60"></label>
+              <label>Choices <span class="optional-label">one per line or comma separated</span><textarea name="pollChoices" [(ngModel)]="pollChoices" rows="3"></textarea></label>
+              <label>Duration seconds<input name="pollDuration" type="number" min="15" max="1800" [(ngModel)]="pollDurationSeconds"></label>
+              <button class="text-button" type="button" (click)="createPoll()" [disabled]="busy()">Create poll</button>
+            </section>
+            <section class="operation-block">
+              <h3>Create prediction</h3>
+              <label>Title<input name="predictionTitle" [(ngModel)]="predictionTitle" maxlength="45"></label>
+              <label>Outcomes <span class="optional-label">one per line or comma separated</span><textarea name="predictionOutcomes" [(ngModel)]="predictionOutcomes" rows="3"></textarea></label>
+              <label>Duration seconds<input name="predictionDuration" type="number" min="1" max="1800" [(ngModel)]="predictionDurationSeconds"></label>
+              <button class="text-button" type="button" (click)="createPrediction()" [disabled]="busy()">Create prediction</button>
+            </section>
+          </div>
+        </section>
+      }
+    </section>
+  </div>
+</main>

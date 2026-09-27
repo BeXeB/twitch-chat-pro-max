@@ -32,6 +32,10 @@ body {
   color: var(--white);
 }
 
+body:has(.overlay-page) {
+  background-color: transparent;
+}
+
 * {
   scrollbar-width: auto;
   scrollbar-color: var(--gray) var(--black);

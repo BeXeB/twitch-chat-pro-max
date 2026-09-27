@@ -24,6 +24,26 @@
   gap: 10px;
 }
 
+.layout-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.layout-links a {
+  padding: 8px 0;
+  border-bottom: 2px solid transparent;
+  color: var(--light-gray);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.layout-links a:hover,
+.layout-links a.selected {
+  border-color: var(--blue);
+  color: var(--white);
+}
+
 .status-dot {
   width: 12px;
   height: 12px;
@@ -147,6 +167,10 @@
   border-color: var(--alert-redemption);
 }
 
+.alert-automation {
+  border-color: var(--blue);
+}
+
 .moderation-feedback {
   position: fixed;
   inset: auto 24px 24px auto;
@@ -185,5 +209,20 @@
 
 .user-actions button:hover {
   background: #2f2f35;
+}
+
+@media (max-width: 560px) {
+  .stream-header {
+    gap: 12px;
+    padding: 10px 12px;
+  }
+
+  .layout-links {
+    gap: 10px;
+  }
+
+  .layout-links a {
+    font-size: 10px;
+  }
 }
 

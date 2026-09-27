@@ -8,6 +8,15 @@ import { ChannelPointRedemptionEvent } from './channel-point-redemption-event.mo
 export type TwitchAlert =
   | {
       id: string;
+      type: 'automation';
+      timestamp: string;
+      data: {
+        message: string;
+        title: string | null;
+      };
+    }
+  | {
+      id: string;
       type: 'follow';
       timestamp: string;
       data: FollowEvent;

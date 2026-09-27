@@ -1,27 +1,33 @@
-# TwitchChatProMax
+# Twitch Chat Pro Max
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.1.1.
+A local Angular control panel and Fastify companion for Twitch chat, moderation, commands, automations, channel points, and OBS layouts. The companion is the only process that owns Twitch OAuth, Helix, and EventSub.
 
-## Development server
+## Run locally
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env`, then set `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`. Register the callback URL in the Twitch developer console.
+3. Run `npm start`.
 
-## Code scaffolding
+The launcher starts the Fastify companion first, waits for its health endpoint, then starts Angular with an API proxy. It stops both child processes together when interrupted. Open `http://127.0.0.1:4200`.
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+If the credentials are not configured, both processes still start, but Twitch operations remain unavailable. Refresh and configuration data are stored under the ignored `data/` directory by default; Windows DPAPI protects the refresh token.
 
-## Build
+### Ports and local data
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+Defaults are `127.0.0.1:4300` for Fastify and `127.0.0.1:4200` for Angular. Override them with `TWITCH_RUNTIME_HOST`, `TWITCH_RUNTIME_PORT`, `TWITCH_FRONTEND_HOST`, and `TWITCH_FRONTEND_PORT`. When changing ports, update `TWITCH_REDIRECT_URI` and `TWITCH_FRONTEND_ORIGIN` to match. The launcher generates a temporary Angular proxy configuration for the selected companion port. `TWITCH_RUNTIME_DATA_DIR` changes the local persistence directory.
 
-## Running unit tests
+Angular reloads browser code as it changes. The companion runs directly under the supervisor; restart `npm start` after editing server code.
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Layouts
 
-## Running end-to-end tests
+- `/dashboard` configures commands, automations, reward mappings, and common chat operations.
+- `/monitor` shows live chat and alerts and provides moderation controls.
+- `/overlay` is a transparent, read-only chat and alert view for OBS Browser Sources.
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+## Checks
 
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+- `npm run build` builds Angular.
+- `npm run server:check` type-checks the companion.
+- `npm run server:build` builds the companion.
+- `npm run server:test` runs companion tests.
+- `npm run start:angular` starts only Angular with the fixed proxy in `proxy.conf.json`.

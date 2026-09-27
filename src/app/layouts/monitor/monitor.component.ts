@@ -1,15 +1,17 @@
 import { Component, HostListener } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 
-import { TwitchService } from '../../core/twitch/twitch.service';
+import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
 import { LinkifyPipe } from '../../core/pipes/linkify.pipe';
 import { ChatMessage } from '../../core/twitch/models/chat-message.model';
 
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [AsyncPipe, LinkifyPipe],
+  imports: [AsyncPipe, LinkifyPipe, RouterLink],
   templateUrl: './monitor.component.html',
   styleUrls: ['./monitor.component.css'],
 })
@@ -19,26 +21,23 @@ export class MonitorComponent {
     this.closeUserActions();
   }
 
-  private currentMessages: ChatMessage[] = [];
-
   private feedbackTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  readonly messages$ = this.twitchService.messages$.pipe(
-    map((messages) => {
-      this.currentMessages = messages;
-      return [...messages].reverse();
-    }),
+  readonly messages$ = toObservable(this.localRuntimeClient.viewState).pipe(
+    map((viewState) => [...viewState.chatMessages].reverse()),
   );
 
-  readonly streamState$ = this.twitchService.streamState$;
+  readonly viewState = this.localRuntimeClient.viewState;
 
-  readonly alerts$ = this.twitchService.alerts$.pipe(
-    map((alerts) => [...alerts].reverse()),
+  readonly streamState$ = toObservable(this.localRuntimeClient.viewState).pipe(
+    map((viewState) => viewState.streamState),
+  );
+
+  readonly alerts$ = toObservable(this.localRuntimeClient.viewState).pipe(
+    map((viewState) => [...viewState.alerts].reverse()),
   );
 
   moderationFeedback: { message: string; success: boolean } | null = null;
-
-  deletedMessageIds = new Set<string>();
 
   selectedUser: ChatMessage | null = null;
 
@@ -71,15 +70,11 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    const succeeded = await this.runModerationAction(
-      this.twitchService.timeoutUser(user.userId, duration),
+    await this.runModerationAction(
+      this.localRuntimeClient.timeoutUser(user.userId, duration),
       `Timed out ${user.displayName} for ${duration} seconds.`,
       `Failed to time out ${user.displayName}.`,
     );
-
-    if (succeeded) {
-      this.markUserMessagesDeleted(user.userId);
-    }
   }
 
   async banUser(): Promise<void> {
@@ -91,15 +86,11 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    const succeeded = await this.runModerationAction(
-      this.twitchService.banUser(user.userId),
+    await this.runModerationAction(
+      this.localRuntimeClient.banUser(user.userId),
       `Banned ${user.displayName}.`,
       `Failed to ban ${user.displayName}.`,
     );
-
-    if (succeeded) {
-      this.markUserMessagesDeleted(user.userId);
-    }
   }
 
   async unbanUser(): Promise<void> {
@@ -112,7 +103,7 @@ export class MonitorComponent {
     this.closeUserActions();
 
     await this.runModerationAction(
-      this.twitchService.unbanUser(user.userId),
+      this.localRuntimeClient.unbanUser(user.userId),
       `Unbanned ${user.displayName}.`,
       `Failed to unban ${user.displayName}.`,
     );
@@ -127,15 +118,11 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    const succeeded = await this.runModerationAction(
-      this.twitchService.deleteChatMessage(user.id),
+    await this.runModerationAction(
+      this.localRuntimeClient.deleteChatMessage(user.id),
       `Deleted ${user.displayName}'s message.`,
       `Failed to delete ${user.displayName}'s message.`,
     );
-
-    if (succeeded) {
-      this.deletedMessageIds = new Set(this.deletedMessageIds).add(user.id);
-    }
   }
 
   private async runModerationAction(
@@ -168,13 +155,7 @@ export class MonitorComponent {
     return succeeded;
   }
 
-  private markUserMessagesDeleted(userId: string): void {
-    const messageIds = this.currentMessages
-      .filter((message) => message.userId === userId)
-      .map((message) => message.id);
-
-    this.deletedMessageIds = new Set([...this.deletedMessageIds, ...messageIds]);
-  }
-
-  constructor(private readonly twitchService: TwitchService) {}
+  constructor(
+    private readonly localRuntimeClient: LocalRuntimeClient,
+  ) {}
 }

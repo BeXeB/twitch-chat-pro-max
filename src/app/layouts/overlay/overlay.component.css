@@ -1,0 +1,98 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #f2f7f4;
+  background: transparent;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.overlay-page {
+  display: flex;
+  width: min(100%, 540px);
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.overlay-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overlay-alert {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid #57d3a0;
+  background: rgba(9, 14, 12, 0.76);
+  color: #effcf5;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px #000;
+}
+
+.overlay-alert strong {
+  margin-right: 7px;
+  color: #57d3a0;
+}
+
+.alert-follow {
+  border-color: #66d38a;
+}
+
+.alert-subscription,
+.alert-gift-subscription {
+  border-color: #f0a86a;
+}
+
+.alert-bits {
+  border-color: #55c5cf;
+}
+
+.alert-raid {
+  border-color: #ed7c69;
+}
+
+.alert-redemption {
+  border-color: #e7cb68;
+}
+
+.overlay-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.overlay-message,
+.overlay-empty {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 3px 7px;
+  border-radius: 2px;
+  background: rgba(9, 14, 12, 0.66);
+  color: #f2f7f4;
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 2px #000;
+}
+
+.overlay-message strong {
+  margin-right: 7px;
+}
+
+.overlay-empty {
+  color: #c4d1ca;
+  font-size: 12px;
+}
+
+:host-context(body:has(.overlay-page)) {
+  background: transparent;
+}
