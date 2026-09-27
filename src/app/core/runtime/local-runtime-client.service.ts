@@ -8,7 +8,7 @@ import {
   RuntimeStreamMessage,
 } from '../../../../shared/contracts/runtime-events';
 import { LocalRuntimeStatus } from '../../../../shared/contracts/runtime-status';
-import { RuntimeAlert, RuntimeViewState } from '../../../../shared/contracts/runtime-view-state';
+import { RuntimeViewState } from '../../../../shared/contracts/runtime-view-state';
 import { AutomationDefinition, ChatSettingsUpdate } from '../../../../shared/contracts/automation';
 import { CommandDefinition } from '../../../../shared/contracts/command';
 import { ChannelPointReward, RewardAutomationMapping } from '../../../../shared/contracts/rewards';
@@ -17,16 +17,11 @@ import {
   CustomRewardUpdateRequest,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
-import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LocalRuntimeClient {
-  private readonly liveAlertSubject = new Subject<RuntimeAlert>();
-
-  readonly liveAlerts$ = this.liveAlertSubject.asObservable();
-
   readonly status = signal<LocalRuntimeStatus | null>(null);
 
   readonly loading = signal(false);
@@ -293,12 +288,6 @@ export class LocalRuntimeClient {
 
     this.recentEvents.update((events) => [...events, message.event].slice(-100));
     this.viewState.set(message.viewState);
-
-    const alert = message.viewState.alerts.find((candidate) => candidate.id === message.event.id);
-
-    if (alert) {
-      this.liveAlertSubject.next(alert);
-    }
   }
 
   private applySnapshot(snapshot: RuntimeSnapshot): void {
