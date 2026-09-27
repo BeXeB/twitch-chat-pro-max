@@ -79,6 +79,10 @@
   padding: 2px;
 }
 
+.chat-message.deleted {
+  opacity: 0.55;
+}
+
 .chat-message strong {
   flex-shrink: 0;
 }
@@ -143,6 +147,13 @@
   border-color: var(--alert-redemption);
 }
 
+.moderation-feedback {
+  position: fixed;
+  inset: auto 24px 24px auto;
+  z-index: 1100;
+  max-width: 80vw;
+}
+
 .user-actions {
   position: fixed;
   z-index: 1000;
@@ -176,8 +187,3 @@
   background: #2f2f35;
 }
 
-.user-actions .cancel {
-  margin-top: 6px;
-  border-top: 1px solid #3f3f46;
-  padding-top: 10px;
-}

@@ -12,6 +12,17 @@
     <!-- Additional stream info can go here -->
   </header>
 
+  @if (moderationFeedback; as feedback) {
+    <div
+      class="alert moderation-feedback"
+      [style.color]="feedback.success ? 'var(--alert-follow)' : 'var(--red)'"
+      role="status"
+      aria-live="polite"
+    >
+      {{ feedback.message }}
+    </div>
+  }
+
   <main class="monitor-content flex-row">
     <section class="card-no-hover card flex-1 flex-col">
       <div class="alerts">
@@ -96,8 +107,15 @@
     <section class="card-no-hover card flex-1 flex-col">
       <div class="chat">
         @for (message of messages$ | async; track message.id) {
-          <div class="chat-message">
-            <strong [style.color]="message.color">
+          <div
+            class="chat-message"
+            [class.deleted]="deletedMessageIds.has(message.id)"
+          >
+            <strong
+              class="username"
+              [style.color]="message.color"
+              (click)="openUserActions($event, message)"
+            >
               {{ message.displayName }}
             </strong>
             :
@@ -120,6 +138,8 @@
             <button (click)="timeoutUser(600)">Timeout 10m</button>
 
             <button (click)="banUser()">Ban</button>
+
+            <button (click)="unbanUser()">Unban</button>
 
             <button (click)="deleteMessage()">Delete Message</button>
           </div>

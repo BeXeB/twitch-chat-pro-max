@@ -785,21 +785,6 @@ export class TwitchService {
     return response !== null;
   }
 
-  async getCustomRewards(): Promise<any[]> {
-    if (!this.accessToken || !this.currentUser) {
-      return [];
-    }
-
-    const params = new URLSearchParams({
-      broadcaster_id: this.currentUser.id,
-    });
-    const data = await this.helixRequest<{ data: any[] }>(
-      `/channel_points/custom_rewards?${params}`,
-    );
-
-    return data?.data ?? [];
-  }
-
   async timeoutUser(
     userId: string,
     duration: number,
@@ -870,6 +855,27 @@ export class TwitchService {
     return response !== null;
   }
 
+  async unbanUser(userId: string): Promise<boolean> {
+    if (!this.currentUser) {
+      return false;
+    }
+
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      moderator_id: this.currentUser.id,
+      user_id: userId,
+    });
+
+    const response = await this.helixFetch(
+      `/moderation/bans?${params.toString()}`,
+      {
+        method: 'DELETE',
+      },
+    );
+
+    return response !== null;
+  }
+
   async deleteChatMessage(messageId: string): Promise<boolean> {
     if (!this.currentUser) {
       return false;
@@ -889,6 +895,21 @@ export class TwitchService {
     );
 
     return response !== null;
+  }
+
+  async getCustomRewards(): Promise<any[]> {
+    if (!this.accessToken || !this.currentUser) {
+      return [];
+    }
+
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+    });
+    const data = await this.helixRequest<{ data: any[] }>(
+      `/channel_points/custom_rewards?${params}`,
+    );
+
+    return data?.data ?? [];
   }
 
   async createCustomReward(
@@ -957,31 +978,18 @@ export class TwitchService {
         options.isMaxPerUserPerStreamEnabled;
     }
 
-    const url = new URL(
-      'https://api.twitch.tv/helix/channel_points/custom_rewards',
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+    });
+    const data = await this.helixRequest<{ data: any[] }>(
+      `/channel_points/custom_rewards?${params}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
     );
 
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to create custom reward:', await response.text());
-
-      return null;
-    }
-
-    const data = await response.json();
-
-    return data.data[0] ?? null;
+    return data?.data[0] ?? null;
   }
 
   async updateCustomReward(
@@ -992,33 +1000,19 @@ export class TwitchService {
       return null;
     }
 
-    const url = new URL(
-      'https://api.twitch.tv/helix/channel_points/custom_rewards',
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      id: rewardId,
+    });
+    const data = await this.helixRequest<{ data: any[] }>(
+      `/channel_points/custom_rewards?${params}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      },
     );
 
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    url.searchParams.set('id', rewardId);
-
-    const response = await fetch(url.toString(), {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updates),
-    });
-
-    if (!response.ok) {
-      console.error('Failed to update custom reward:', await response.text());
-
-      return null;
-    }
-
-    const data = await response.json();
-
-    return data.data[0] ?? null;
+    return data?.data[0] ?? null;
   }
 
   async deleteCustomReward(rewardId: string): Promise<boolean> {
@@ -1026,29 +1020,18 @@ export class TwitchService {
       return false;
     }
 
-    const url = new URL(
-      'https://api.twitch.tv/helix/channel_points/custom_rewards',
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      id: rewardId,
+    });
+    const response = await this.helixFetch(
+      `/channel_points/custom_rewards?${params}`,
+      {
+        method: 'DELETE',
+      },
     );
 
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    url.searchParams.set('id', rewardId);
-
-    const response = await fetch(url.toString(), {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to delete custom reward:', await response.text());
-
-      return false;
-    }
-
-    return true;
+    return response !== null;
   }
 
   async updateRedemptionStatus(
@@ -1060,37 +1043,26 @@ export class TwitchService {
       return false;
     }
 
-    const url = new URL(
-      'https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions',
-    );
-
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    url.searchParams.set('reward_id', rewardId);
-
-    for (const redemptionId of redemptionIds) {
-      url.searchParams.append('id', redemptionId);
-    }
-
-    const response = await fetch(url.toString(), {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        status,
-      }),
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      reward_id: rewardId,
     });
 
-    if (!response.ok) {
-      console.error('Failed to update redemption:', await response.text());
-
-      return false;
+    for (const redemptionId of redemptionIds) {
+      params.append('id', redemptionId);
     }
 
-    return true;
+    const response = await this.helixFetch(
+      `/channel_points/custom_rewards/redemptions?${params}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status,
+        }),
+      },
+    );
+
+    return response !== null;
   }
 
   async getStreamInfo(): Promise<any | null> {
@@ -1098,26 +1070,12 @@ export class TwitchService {
       return null;
     }
 
-    const url = new URL('https://api.twitch.tv/helix/streams');
+    const params = new URLSearchParams({ user_id: this.currentUser.id });
+    const data = await this.helixRequest<{ data: any[] }>(
+      `/streams?${params}`,
+    );
 
-    url.searchParams.set('user_id', this.currentUser.id);
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to get stream info:', await response.text());
-
-      return null;
-    }
-
-    const data = await response.json();
-
-    return data.data[0] ?? null;
+    return data?.data[0] ?? null;
   }
 
   async createPoll(
@@ -1129,34 +1087,17 @@ export class TwitchService {
       return null;
     }
 
-    const url = new URL('https://api.twitch.tv/helix/polls');
-
-    const response = await fetch(url.toString(), {
+    const data = await this.helixRequest<{ data: any[] }>('/polls', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         broadcaster_id: this.currentUser.id,
         title,
-        choices: choices.map((title) => ({
-          title,
-        })),
+        choices: choices.map((title) => ({ title })),
         duration: durationSeconds,
       }),
     });
 
-    if (!response.ok) {
-      console.error('Failed to create poll:', await response.text());
-
-      return null;
-    }
-
-    const data = await response.json();
-
-    return data.data[0] ?? null;
+    return data?.data[0] ?? null;
   }
 
   async endPoll(
@@ -1167,31 +1108,18 @@ export class TwitchService {
       return false;
     }
 
-    const url = new URL('https://api.twitch.tv/helix/polls');
-
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    url.searchParams.set('id', pollId);
-
-    const response = await fetch(url.toString(), {
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      id: pollId,
+    });
+    const response = await this.helixFetch(`/polls?${params}`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         status,
       }),
     });
 
-    if (!response.ok) {
-      console.error('Failed to end poll:', await response.text());
-
-      return false;
-    }
-
-    return true;
+    return response !== null;
   }
 
   async createPrediction(
@@ -1203,13 +1131,8 @@ export class TwitchService {
       return null;
     }
 
-    const response = await fetch('https://api.twitch.tv/helix/predictions', {
+    const data = await this.helixRequest<{ data: any[] }>('/predictions', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         broadcaster_id: this.currentUser.id,
         title,
@@ -1218,15 +1141,7 @@ export class TwitchService {
       }),
     });
 
-    if (!response.ok) {
-      console.error('Failed to create prediction:', await response.text());
-
-      return null;
-    }
-
-    const data = await response.json();
-
-    return data.data[0] ?? null;
+    return data?.data[0] ?? null;
   }
 
   async resolvePrediction(
@@ -1248,23 +1163,12 @@ export class TwitchService {
       body['winning_outcome_id'] = winningOutcomeId;
     }
 
-    const response = await fetch('https://api.twitch.tv/helix/predictions', {
+    const response = await this.helixFetch('/predictions', {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      console.error('Failed to update prediction:', await response.text());
-
-      return false;
-    }
-
-    return true;
+    return response !== null;
   }
 
   getUser(): TwitchUser | null {

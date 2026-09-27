@@ -19,13 +19,26 @@ export class MonitorComponent {
     this.closeUserActions();
   }
 
-  readonly messages$ = this.twitchService.messages$;
+  private currentMessages: ChatMessage[] = [];
+
+  private feedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  readonly messages$ = this.twitchService.messages$.pipe(
+    map((messages) => {
+      this.currentMessages = messages;
+      return [...messages].reverse();
+    }),
+  );
 
   readonly streamState$ = this.twitchService.streamState$;
 
   readonly alerts$ = this.twitchService.alerts$.pipe(
     map((alerts) => [...alerts].reverse()),
   );
+
+  moderationFeedback: { message: string; success: boolean } | null = null;
+
+  deletedMessageIds = new Set<string>();
 
   selectedUser: ChatMessage | null = null;
 
@@ -49,34 +62,118 @@ export class MonitorComponent {
     this.selectedUser = null;
   }
 
-  timeoutUser(duration: number): void {
+  async timeoutUser(duration: number): Promise<void> {
     if (!this.selectedUser) {
       return;
     }
 
-    this.twitchService.timeoutUser(this.selectedUser.userId, duration);
+    const user = this.selectedUser;
 
     this.closeUserActions();
+
+    const succeeded = await this.runModerationAction(
+      this.twitchService.timeoutUser(user.userId, duration),
+      `Timed out ${user.displayName} for ${duration} seconds.`,
+      `Failed to time out ${user.displayName}.`,
+    );
+
+    if (succeeded) {
+      this.markUserMessagesDeleted(user.userId);
+    }
   }
 
-  banUser(): void {
+  async banUser(): Promise<void> {
     if (!this.selectedUser) {
       return;
     }
 
-    this.twitchService.banUser(this.selectedUser.userId);
+    const user = this.selectedUser;
 
     this.closeUserActions();
+
+    const succeeded = await this.runModerationAction(
+      this.twitchService.banUser(user.userId),
+      `Banned ${user.displayName}.`,
+      `Failed to ban ${user.displayName}.`,
+    );
+
+    if (succeeded) {
+      this.markUserMessagesDeleted(user.userId);
+    }
   }
 
-  deleteMessage(): void {
+  async unbanUser(): Promise<void> {
     if (!this.selectedUser) {
       return;
     }
 
-    this.twitchService.deleteChatMessage(this.selectedUser.id);
+    const user = this.selectedUser;
 
     this.closeUserActions();
+
+    await this.runModerationAction(
+      this.twitchService.unbanUser(user.userId),
+      `Unbanned ${user.displayName}.`,
+      `Failed to unban ${user.displayName}.`,
+    );
+  }
+
+  async deleteMessage(): Promise<void> {
+    if (!this.selectedUser) {
+      return;
+    }
+
+    const user = this.selectedUser;
+
+    this.closeUserActions();
+
+    const succeeded = await this.runModerationAction(
+      this.twitchService.deleteChatMessage(user.id),
+      `Deleted ${user.displayName}'s message.`,
+      `Failed to delete ${user.displayName}'s message.`,
+    );
+
+    if (succeeded) {
+      this.deletedMessageIds = new Set(this.deletedMessageIds).add(user.id);
+    }
+  }
+
+  private async runModerationAction(
+    action: Promise<boolean>,
+    successMessage: string,
+    failureMessage: string,
+  ): Promise<boolean> {
+    let succeeded = false;
+
+    try {
+      succeeded = await action;
+    } catch {
+      succeeded = false;
+    }
+
+    this.moderationFeedback = {
+      message: succeeded ? successMessage : failureMessage,
+      success: succeeded,
+    };
+
+    if (this.feedbackTimeout !== null) {
+      clearTimeout(this.feedbackTimeout);
+    }
+
+    this.feedbackTimeout = setTimeout(() => {
+      this.moderationFeedback = null;
+      this.feedbackTimeout = null;
+    }, 3000);
+
+    return succeeded;
+  }
+
+  private markUserMessagesDeleted(userId: string): void {
+    const messageIds = this.currentMessages
+      .filter((message) => message.userId === userId)
+      .map((message) => message.id);
+
+    this.deletedMessageIds = new Set([...this.deletedMessageIds, ...messageIds]);
   }
 
   constructor(private readonly twitchService: TwitchService) {}
