@@ -3,16 +3,15 @@
   [class.overlay-black-preview]="blackPreview"
   aria-label="Twitch stream overlay"
 >
-  @if (alerts().length > 0) {
-    <section class="overlay-alerts" aria-label="Recent stream alerts">
-      @for (alert of alerts(); track alert.id) {
-        <p class="overlay-alert" [class]="'overlay-alert alert-' + alert.type">
-          @if (alert.type === 'automation' && alert.data.title) {
-            <strong>{{ alert.data.title }}</strong>
-          }
-          {{ describeAlert(alert) }}
-        </p>
-      }
+  @if (activeAlert(); as alert) {
+    <section class="overlay-alerts" aria-live="polite" aria-atomic="true">
+      <article class="overlay-alert" [class]="'overlay-alert alert-' + alert.type">
+        <img class="overlay-alert-image" [src]="alertPresets[alert.type].imageUrl" alt="" />
+        <div class="overlay-alert-copy">
+          <h2>{{ alertTitle(alert) }}</h2>
+          <p>{{ describeAlert(alert) }}</p>
+        </div>
+      </article>
     </section>
   }
 
@@ -20,7 +19,7 @@
     @for (message of messages(); track message.id) {
       <p class="overlay-message">
         <strong [style.color]="message.color ?? null">{{ message.displayName }}</strong>
-        <span>{{ message.message }}</span>
+        <span>: {{ message.message }}</span>
       </p>
     }
   </section>

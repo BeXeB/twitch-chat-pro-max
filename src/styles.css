@@ -45,31 +45,31 @@ body:has(.overlay-page.overlay-black-preview) {
 }
 
 .alert-follow {
-  border-color: var(--alert-follow);
+  --alert-type-color: var(--alert-follow);
 }
 
 .alert-subscription {
-  border-color: var(--alert-subscription);
+  --alert-type-color: var(--alert-subscription);
 }
 
 .alert-gift-subscription {
-  border-color: var(--alert-gift-subscription);
+  --alert-type-color: var(--alert-gift-subscription);
 }
 
 .alert-bits {
-  border-color: var(--alert-bits);
+  --alert-type-color: var(--alert-bits);
 }
 
 .alert-raid {
-  border-color: var(--alert-raid);
+  --alert-type-color: var(--alert-raid);
 }
 
 .alert-redemption {
-  border-color: var(--alert-redemption);
+  --alert-type-color: var(--alert-redemption);
 }
 
 .alert-automation {
-  border-color: var(--blue);
+  --alert-type-color: var(--blue);
 }
 
 * {

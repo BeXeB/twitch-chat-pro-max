@@ -154,7 +154,7 @@
   padding: 12px;
   margin-bottom: 8px;
 
-  border: 1px solid var(--gray);
+  border: 1px solid var(--alert-type-color, var(--gray));
   border-radius: 6px;
 
   background: var(--dark-gray);
