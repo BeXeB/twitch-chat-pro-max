@@ -5,4 +5,5 @@ export interface ChatMessage {
   displayName: string;
   message: string;
   timestamp: string;
+  color: string | null;
 }

@@ -2,6 +2,7 @@
   overflow: hidden;
   padding: 0px 12px;
   height: 100vh;
+  min-height: 0;
 }
 
 .stream-header {
@@ -38,31 +39,63 @@
 }
 
 .monitor-content {
-  flex-grow: 1;
+  flex: 1;
+  min-height: 0;
+
   padding-bottom: 12px;
+
+  overflow: hidden;
 }
 
 .chat,
 .alerts {
   flex: 1;
+  min-height: 0;
+
   overflow-y: auto;
-  padding: 12px;
+
+  /* Firefox */
+  scrollbar-width: none;
+
+  /* IE/old Edge */
+  -ms-overflow-style: none;
+
+  /* WebKit */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.username {
+  cursor: pointer;
+}
+
+.username:hover {
+  text-decoration: underline;
 }
 
 .chat-message {
   display: flex;
-  gap: 8px;
-
-  padding: 6px 8px;
+  padding: 2px;
 }
 
 .chat-message strong {
   flex-shrink: 0;
 }
 
+.chat-message span {
+  flex: 1;
+  padding-left: 4px;
+}
+
+.chat-message a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 .alert {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 4px;
 
   padding: 12px;
@@ -70,6 +103,8 @@
 
   border: 1px solid var(--gray);
   border-radius: 6px;
+
+  background: var(--dark-gray);
 }
 
 .alert strong {
@@ -84,26 +119,65 @@
   opacity: 0.75;
 }
 
-.alert.follow {
-  border-left: 4px solid #4caf50;
+.alert-follow {
+  border-color: var(--alert-follow);
 }
 
-.alert.subscription {
-  border-left: 4px solid #9147ff;
+.alert-subscription {
+  border-color: var(--alert-subscription);
 }
 
-.alert.gift {
-  border-left: 4px solid #e91e63;
+.alert-gift-subscription {
+  border-color: var(--alert-gift-subscription);
 }
 
-.alert.bits {
-  border-left: 4px solid #00bcd4;
+.alert-bits {
+  border-color: var(--alert-bits);
 }
 
-.alert.raid {
-  border-left: 4px solid #ff9800;
+.alert-raid {
+  border-color: var(--alert-raid);
 }
 
-.alert.redemption {
-  border-left: 4px solid #ffc107;
+.alert-redemption {
+  border-color: var(--alert-redemption);
+}
+
+.user-actions {
+  position: fixed;
+  z-index: 1000;
+  min-width: 180px;
+  padding: 8px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.user-actions-header {
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid #3f3f46;
+  margin-bottom: 6px;
+}
+
+.user-actions button {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-actions button:hover {
+  background: #2f2f35;
+}
+
+.user-actions .cancel {
+  margin-top: 6px;
+  border-top: 1px solid #3f3f46;
+  padding-top: 10px;
 }

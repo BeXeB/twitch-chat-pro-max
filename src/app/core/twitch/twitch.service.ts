@@ -20,27 +20,33 @@ export class TwitchService {
   private readonly clientId = environment.twitchClientId;
   private readonly eventSubUrl = environment.twitchEventSubUrl;
   private readonly redirectUri = 'http://localhost:4200';
+  private readonly helixUrl = 'https://api.twitch.tv/helix';
+
+  private mockChatInterval: ReturnType<typeof setInterval> | null = null;
 
   private readonly scopes: Set<string> = new Set([
     'user:read:chat',
     'user:write:chat',
     'channel:bot',
+
     'channel:read:redemptions',
     'channel:manage:redemptions',
+
     'channel:read:subscriptions',
     'channel:read:goals',
+
     'channel:manage:polls',
     'channel:manage:predictions',
+
     'bits:read',
+
     'moderator:read:followers',
     'moderator:read:chatters',
     'moderator:read:moderators',
+
     'moderator:manage:announcements',
     'moderator:manage:chat_messages',
-    'moderator:manage:chat_settings',
-    'moderator:manage:shoutouts',
     'moderator:manage:banned_users',
-    'moderator:read:followers',
     'moderator:manage:shoutouts',
     'moderator:manage:chat_settings',
   ]);
@@ -109,6 +115,11 @@ export class TwitchService {
   }
 
   async initialize(): Promise<void> {
+    if (environment.production === false) {
+      //FOR TESTING PURPOSES
+      this.startMockChatLoop();
+    }
+
     const hash = window.location.hash;
 
     if (!hash) {
@@ -129,6 +140,7 @@ export class TwitchService {
 
     await this.connect(accessToken);
   }
+
   async connect(accessToken: string): Promise<void> {
     this.accessToken = accessToken;
 
@@ -146,6 +158,59 @@ export class TwitchService {
     console.log('Connected Twitch user:', user.displayName);
 
     this.connectToEventSub();
+  }
+
+  private getHelixHeaders(): HeadersInit {
+    if (!this.accessToken) {
+      throw new Error('Twitch access token is missing.');
+    }
+
+    return {
+      Authorization: `Bearer ${this.accessToken}`,
+      'Client-Id': this.clientId,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  private async helixFetch(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<Response | null> {
+    if (!this.accessToken) {
+      return null;
+    }
+
+    const response = await fetch(`${this.helixUrl}${endpoint}`, {
+      ...options,
+      headers: {
+        ...this.getHelixHeaders(),
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      console.error(
+        `Twitch API error ${response.status}:`,
+        await response.text(),
+      );
+
+      return null;
+    }
+
+    return response;
+  }
+
+  private async helixRequest<T>(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<T | null> {
+    const response = await this.helixFetch(endpoint, options);
+
+    if (!response || response.status === 204) {
+      return null;
+    }
+
+    return response.json();
   }
 
   private addAlert(alert: TwitchAlert): void {
@@ -439,6 +504,7 @@ export class TwitchService {
       displayName: event.chatter_user_name,
       message: event.message.text,
       timestamp: message.metadata.message_timestamp,
+      color: event.color ?? null,
     };
 
     const messages = this.messagesSubject.value;
@@ -486,6 +552,7 @@ export class TwitchService {
       displayName: event.user_name,
       tier: event.tier,
       isGift: event.is_gift,
+      message: '',
     };
 
     this.subscriptionsSubject.next([
@@ -528,7 +595,26 @@ export class TwitchService {
   private handleSubscriptionMessage(message: any): void {
     const event = message.payload.event;
 
-    console.log('Resubscription:', event);
+    const subscription: SubscriptionEvent = {
+      userId: event.user_id,
+      username: event.user_login,
+      displayName: event.user_name,
+      tier: event.tier,
+      isGift: false,
+      message: event.message?.text ?? '',
+    };
+
+    this.subscriptionsSubject.next([
+      ...this.subscriptionsSubject.value,
+      subscription,
+    ]);
+
+    this.addAlert({
+      id: crypto.randomUUID(),
+      type: 'subscription',
+      timestamp: new Date().toISOString(),
+      data: subscription,
+    });
   }
 
   private handleBits(message: any): void {
@@ -613,26 +699,17 @@ export class TwitchService {
     }
 
     const broadcasterId = this.currentUser.id;
-
-    const url = new URL('https://api.twitch.tv/helix/chat/shoutouts');
-
-    url.searchParams.set('from_broadcaster_id', broadcasterId);
-
-    url.searchParams.set('to_broadcaster_id', targetBroadcasterId);
-
-    url.searchParams.set('moderator_id', broadcasterId);
-
-    const response = await fetch(url.toString(), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-      },
+    const params = new URLSearchParams({
+      from_broadcaster_id: broadcasterId,
+      to_broadcaster_id: targetBroadcasterId,
+      moderator_id: broadcasterId,
     });
 
-    if (!response.ok) {
-      console.error('Failed to send Twitch shoutout:', await response.text());
+    const response = await this.helixFetch(`/chat/shoutouts?${params}`, {
+      method: 'POST',
+    });
 
+    if (!response) {
       return false;
     }
 
@@ -679,29 +756,16 @@ export class TwitchService {
       body['emote_mode'] = settings.emoteMode;
     }
 
-    const url = new URL('https://api.twitch.tv/helix/chat/settings');
-
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
-
-    url.searchParams.set('moderator_id', this.currentUser.id);
-
-    const response = await fetch(url.toString(), {
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      moderator_id: this.currentUser.id,
+    });
+    const response = await this.helixFetch(`/chat/settings?${params}`, {
       method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(body),
     });
 
-    if (!response.ok) {
-      console.error('Failed to update chat settings:', await response.text());
-
-      return false;
-    }
-
-    return true;
+    return response !== null;
   }
 
   async sendChatMessage(message: string): Promise<boolean> {
@@ -709,13 +773,8 @@ export class TwitchService {
       return false;
     }
 
-    const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
+    const response = await this.helixFetch('/chat/messages', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         broadcaster_id: this.currentUser.id,
         sender_id: this.currentUser.id,
@@ -723,13 +782,7 @@ export class TwitchService {
       }),
     });
 
-    if (!response.ok) {
-      console.error('Failed to send chat message:', await response.text());
-
-      return false;
-    }
-
-    return true;
+    return response !== null;
   }
 
   async getCustomRewards(): Promise<any[]> {
@@ -737,28 +790,105 @@ export class TwitchService {
       return [];
     }
 
-    const url = new URL(
-      'https://api.twitch.tv/helix/channel_points/custom_rewards',
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+    });
+    const data = await this.helixRequest<{ data: any[] }>(
+      `/channel_points/custom_rewards?${params}`,
     );
 
-    url.searchParams.set('broadcaster_id', this.currentUser.id);
+    return data?.data ?? [];
+  }
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Client-Id': this.clientId,
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Failed to get custom rewards:', await response.text());
-
-      return [];
+  async timeoutUser(
+    userId: string,
+    duration: number,
+    reason?: string,
+  ): Promise<boolean> {
+    if (!this.currentUser) {
+      return false;
     }
 
-    const data = await response.json();
+    const body: {
+      data: {
+        user_id: string;
+        duration: number;
+        reason?: string;
+      };
+    } = {
+      data: {
+        user_id: userId,
+        duration,
+      },
+    };
 
-    return data.data;
+    if (reason) {
+      body.data.reason = reason;
+    }
+
+    const response = await this.helixFetch(
+      `/moderation/bans?broadcaster_id=${this.currentUser.id}` +
+        `&moderator_id=${this.currentUser.id}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+
+    return response !== null;
+  }
+
+  async banUser(userId: string, reason?: string): Promise<boolean> {
+    if (!this.currentUser) {
+      return false;
+    }
+
+    const body: {
+      data: {
+        user_id: string;
+        reason?: string;
+      };
+    } = {
+      data: {
+        user_id: userId,
+      },
+    };
+
+    if (reason) {
+      body.data.reason = reason;
+    }
+
+    const response = await this.helixFetch(
+      `/moderation/bans?broadcaster_id=${this.currentUser.id}` +
+        `&moderator_id=${this.currentUser.id}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(body),
+      },
+    );
+
+    return response !== null;
+  }
+
+  async deleteChatMessage(messageId: string): Promise<boolean> {
+    if (!this.currentUser) {
+      return false;
+    }
+
+    const params = new URLSearchParams({
+      broadcaster_id: this.currentUser.id,
+      moderator_id: this.currentUser.id,
+      message_id: messageId,
+    });
+
+    const response = await this.helixFetch(
+      `/moderation/chat?${params.toString()}`,
+      {
+        method: 'DELETE',
+      },
+    );
+
+    return response !== null;
   }
 
   async createCustomReward(
@@ -1152,7 +1282,48 @@ export class TwitchService {
     this.accessToken = null;
     this.currentUser = null;
 
+    if (this.mockChatInterval) {
+      clearInterval(this.mockChatInterval);
+      this.mockChatInterval = null;
+    }
+
     this.connectedSubject.next(false);
     this.streamStateSubject.next('offline');
+  }
+
+  //FOR TESTING
+  private startMockChatLoop(): void {
+    if (this.mockChatInterval) {
+      return;
+    }
+
+    const messages: [string, string, string, string][] = [
+      ['testUser', 'TestUser', 'Hello from the mock chat!', '#FF0000'],
+      ['viewer123', 'Viewer123', 'Pog!', '#00FF00'],
+      ['coolViewer', 'CoolViewer', 'This is a test message.', '#9147FF'],
+      ['anotherUser', 'AnotherUser', 'Chat is working!', '#00B5AD'],
+      ['testUser', 'TestUser', 'How is everyone doing?', '#FF69B4'],
+      ['viewer123', 'Viewer123', 'LFG!', '#FFD700'],
+    ];
+
+    let index = 0;
+
+    this.mockChatInterval = setInterval(() => {
+      const [username, displayName, message, color] = messages[index];
+
+      const chatMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        userId: `mock-${username}`,
+        username,
+        displayName,
+        message,
+        timestamp: new Date().toISOString(),
+        color,
+      };
+
+      this.messagesSubject.next([...this.messagesSubject.value, chatMessage]);
+
+      index = (index + 1) % messages.length;
+    }, 2000);
   }
 }

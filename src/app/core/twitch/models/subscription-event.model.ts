@@ -4,4 +4,5 @@ export interface SubscriptionEvent {
   displayName: string;
   tier: string;
   isGift: boolean;
+  message: string;
 }

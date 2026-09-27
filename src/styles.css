@@ -15,29 +15,12 @@
   --shadow-blue: #002f5974;
   --red: #c70000;
 
-  --pyro: oklch(75.834% 0.10956 53.811);
-  --hydro: oklch(56.139% 0.09918 214.988);
-  --anemo: oklch(82.821% 0.11591 159.497);
-  --electro: oklch(72.834% 0.12103 305.115);
-  --dendro: oklch(84.118% 0.17804 123.225);
-  --cryo: oklch(83.9% 0.08099 196.77);
-  --geo: oklch(84.608% 0.1267 97.577);
-
-  --pyro-dark: oklch(65.834% 0.10956 53.811);
-  --hydro-dark: oklch(56.139% 0.09918 214.988);
-  --anemo-dark: oklch(67.821% 0.11591 159.497);
-  --electro-dark: oklch(57.834% 0.12103 305.115);
-  --dendro-dark: oklch(69.118% 0.17804 123.225);
-  --cryo-dark: oklch(68.9% 0.08099 196.77);
-  --geo-dark: oklch(74.608% 0.1267 97.577);
-
-  --highlight: oklch(89.519% 0.11491 85.425);
-
-  --rar-1: #3a3d42;
-  --rar-2: #1b4d2a;
-  --rar-3: #0f3f73;
-  --rar-4: #3d1a5f;
-  --rar-5: #7a4b00;
+  --alert-follow: #4caf50;
+  --alert-subscription: #9147ff;
+  --alert-gift-subscription: #e91e63;
+  --alert-bits: #00bcd4;
+  --alert-raid: #ff9800;
+  --alert-redemption: #ffc107;
 }
 
 body {

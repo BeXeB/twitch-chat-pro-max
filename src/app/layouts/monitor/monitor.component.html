@@ -16,7 +16,7 @@
     <section class="card-no-hover card flex-1 flex-col">
       <div class="alerts">
         @for (alert of alerts$ | async; track alert.id) {
-          <div class="alert">
+          <div class="alert" [class]="'alert-' + alert.type">
             @switch (alert.type) {
               @case ("follow") {
                 <strong>New Follow</strong>
@@ -33,6 +33,12 @@
                   {{ alert.data.displayName }}
                   · Tier {{ alert.data.tier }}
                 </span>
+
+                @if (alert.data.message) {
+                  <small>
+                    {{ alert.data.message }}
+                  </small>
+                }
               }
 
               @case ("gift-subscription") {
@@ -51,6 +57,11 @@
                   {{ alert.data.displayName }}
                   · {{ alert.data.bits }} Bits
                 </span>
+                @if (alert.data.message) {
+                  <small>
+                    {{ alert.data.message }}
+                  </small>
+                }
               }
 
               @case ("raid") {
@@ -70,6 +81,12 @@
                 <span>
                   {{ alert.data.displayName }}
                 </span>
+
+                @if (alert.data.userInput) {
+                  <small>
+                    {{ alert.data.userInput }}
+                  </small>
+                }
               }
             }
           </div>
@@ -80,13 +97,31 @@
       <div class="chat">
         @for (message of messages$ | async; track message.id) {
           <div class="chat-message">
-            <strong>
+            <strong [style.color]="message.color">
               {{ message.displayName }}
             </strong>
+            :
+            <span [innerHTML]="message.message | linkify"></span>
+          </div>
+        }
+        @if (selectedUser) {
+          <div
+            class="user-actions"
+            [style.left.px]="userActionsPosition.x"
+            [style.top.px]="userActionsPosition.y"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="user-actions-header">
+              <strong>{{ selectedUser.displayName }}</strong>
+            </div>
 
-            <span>
-              {{ message.message }}
-            </span>
+            <button (click)="timeoutUser(60)">Timeout 1m</button>
+
+            <button (click)="timeoutUser(600)">Timeout 10m</button>
+
+            <button (click)="banUser()">Ban</button>
+
+            <button (click)="deleteMessage()">Delete Message</button>
           </div>
         }
       </div>
