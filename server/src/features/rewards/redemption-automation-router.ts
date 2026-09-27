@@ -20,10 +20,7 @@ export class RedemptionAutomationRouter {
     ) => Promise<void>,
   ) {}
 
-  async handle(
-    event: ApplicationEvent,
-    emit: (event: ApplicationEvent) => void,
-  ): Promise<boolean> {
+  async handle(event: ApplicationEvent, emit: (event: ApplicationEvent) => void): Promise<boolean> {
     const redemption = readRedemption(event);
 
     if (!redemption) {
@@ -41,8 +38,7 @@ export class RedemptionAutomationRouter {
         { ...event, targetAutomationId: mapping.automationId },
         emit,
       );
-      const completed =
-        results.length === 1 && results[0].status === 'completed';
+      const completed = results.length === 1 && results[0].status === 'completed';
 
       if (!completed) {
         emitReviewEvent(event, mapping, redemption, 'automation-not-completed', emit);
@@ -54,13 +50,8 @@ export class RedemptionAutomationRouter {
         return true;
       }
 
-      const status =
-        mapping.completionPolicy === 'auto-fulfill' ? 'FULFILLED' : 'CANCELED';
-      await this.updateRedemptionStatus(
-        redemption.rewardId,
-        redemption.id,
-        status,
-      );
+      const status = mapping.completionPolicy === 'auto-fulfill' ? 'FULFILLED' : 'CANCELED';
+      await this.updateRedemptionStatus(redemption.rewardId, redemption.id, status);
       emit({
         causationId: event.id,
         correlationId: event.correlationId ?? event.id,
@@ -124,10 +115,7 @@ function readRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function readString(
-  record: Record<string, unknown> | null,
-  key: string,
-): string | null {
+function readString(record: Record<string, unknown> | null, key: string): string | null {
   const value = record?.[key];
 
   return typeof value === 'string' ? value : null;

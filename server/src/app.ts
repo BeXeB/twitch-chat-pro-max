@@ -1,4 +1,4 @@
-import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import Fastify, { FastifyInstance, FastifyReply } from 'fastify';
 
 import { RuntimeStreamMessage } from '../../shared/contracts/runtime-events';
 import { LocalRuntimeHealth } from '../../shared/contracts/runtime-status';
@@ -66,9 +66,7 @@ export function createApp(): FastifyInstance {
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof TwitchApiError) {
       const statusCode =
-        error.status !== null && error.status >= 400 && error.status < 500
-          ? error.status
-          : 502;
+        error.status !== null && error.status >= 400 && error.status < 500 ? error.status : 502;
 
       return reply.code(statusCode).send({
         error: 'twitch_operation_failed',
@@ -85,16 +83,11 @@ export function createApp(): FastifyInstance {
   const refreshTokenStore = new WindowsDpapiRefreshTokenStore(
     `${config.dataDirectory}/twitch-refresh-token.dat`,
   );
-  const twitchAuth = new TwitchAuthService(
-    config.twitchOAuth,
-    refreshTokenStore,
-  );
+  const twitchAuth = new TwitchAuthService(config.twitchOAuth, refreshTokenStore);
   const automationRepository = new FileAutomationRepository(
     `${config.dataDirectory}/automations.json`,
   );
-  const commandRepository = new FileCommandRepository(
-    `${config.dataDirectory}/commands.json`,
-  );
+  const commandRepository = new FileCommandRepository(`${config.dataDirectory}/commands.json`);
   const continuationRepository = new FileContinuationRepository(
     `${config.dataDirectory}/timer-continuations.json`,
   );
@@ -129,10 +122,13 @@ export function createApp(): FastifyInstance {
     }
   });
 
-  app.get('/api/health', async (): Promise<LocalRuntimeHealth> => ({
-    service: 'twitch-runtime',
-    status: 'ok',
-  }));
+  app.get(
+    '/api/health',
+    async (): Promise<LocalRuntimeHealth> => ({
+      service: 'twitch-runtime',
+      status: 'ok',
+    }),
+  );
 
   app.get('/api/runtime/status', async () => localRuntime.getStatus());
 
@@ -159,9 +155,7 @@ export function createApp(): FastifyInstance {
   app.delete<{ Params: AutomationRouteParameters }>(
     '/api/automations/:automationId',
     async (request, reply) => {
-      const removed = await automationRepository.remove(
-        request.params.automationId,
-      );
+      const removed = await automationRepository.remove(request.params.automationId);
 
       return removed ? reply.code(204).send() : reply.code(404).send();
     },
@@ -172,10 +166,7 @@ export function createApp(): FastifyInstance {
   app.put<{ Body: unknown; Params: CommandRouteParameters }>(
     '/api/commands/:commandId',
     async (request, reply) => {
-      if (
-        !isCommandDefinition(request.body) ||
-        request.body.id !== request.params.commandId
-      ) {
+      if (!isCommandDefinition(request.body) || request.body.id !== request.params.commandId) {
         return reply.code(400).send({
           error: 'invalid_command',
           message: 'The command definition is invalid.',
@@ -222,14 +213,11 @@ export function createApp(): FastifyInstance {
 
   app.get('/api/timers', async () => localRuntime.listContinuations());
 
-  app.delete<{ Params: TimerRouteParameters }>(
-    '/api/timers/:timerId',
-    async (request, reply) => {
-      const removed = await localRuntime.cancelContinuation(request.params.timerId);
+  app.delete<{ Params: TimerRouteParameters }>('/api/timers/:timerId', async (request, reply) => {
+    const removed = await localRuntime.cancelContinuation(request.params.timerId);
 
-      return removed ? reply.code(204).send() : reply.code(404).send();
-    },
-  );
+    return removed ? reply.code(204).send() : reply.code(404).send();
+  });
 
   app.get('/api/rewards', async () => localRuntime.listRewards());
 
@@ -292,16 +280,13 @@ export function createApp(): FastifyInstance {
 
   app.get('/api/stream', async () => localRuntime.getStreamInfo());
 
-  app.get<{ Params: UserRouteParameters }>(
-    '/api/users/by-login/:login',
-    async (request, reply) => {
-      if (!/^[a-zA-Z0-9_]{1,25}$/.test(request.params.login)) {
-        return sendInvalidIntent(reply, 'invalid_twitch_login');
-      }
+  app.get<{ Params: UserRouteParameters }>('/api/users/by-login/:login', async (request, reply) => {
+    if (!/^[a-zA-Z0-9_]{1,25}$/.test(request.params.login)) {
+      return sendInvalidIntent(reply, 'invalid_twitch_login');
+    }
 
-      return { userId: await localRuntime.getUserIdByLogin(request.params.login) };
-    },
-  );
+    return { userId: await localRuntime.getUserIdByLogin(request.params.login) };
+  });
 
   app.post<{ Body: unknown }>('/api/chat/messages', async (request, reply) => {
     if (!isRecord(request.body) || !isText(request.body['message'], 500)) {
@@ -321,36 +306,27 @@ export function createApp(): FastifyInstance {
     return reply.code(204).send();
   });
 
-  app.post<{ Body: unknown }>(
-    '/api/chat/shoutouts',
-    async (request, reply) => {
-      if (
-        !isRecord(request.body) ||
-        !isText(request.body['targetBroadcasterId'])
-      ) {
-        return sendInvalidIntent(reply, 'invalid_shoutout');
-      }
+  app.post<{ Body: unknown }>('/api/chat/shoutouts', async (request, reply) => {
+    if (!isRecord(request.body) || !isText(request.body['targetBroadcasterId'])) {
+      return sendInvalidIntent(reply, 'invalid_shoutout');
+    }
 
-      await localRuntime.sendShoutout(request.body['targetBroadcasterId']);
-      return reply.code(204).send();
-    },
-  );
+    await localRuntime.sendShoutout(request.body['targetBroadcasterId']);
+    return reply.code(204).send();
+  });
 
-  app.post<{ Body: unknown }>(
-    '/api/moderation/timeouts',
-    async (request, reply) => {
-      if (!isTimeoutIntent(request.body)) {
-        return sendInvalidIntent(reply, 'invalid_timeout');
-      }
+  app.post<{ Body: unknown }>('/api/moderation/timeouts', async (request, reply) => {
+    if (!isTimeoutIntent(request.body)) {
+      return sendInvalidIntent(reply, 'invalid_timeout');
+    }
 
-      await localRuntime.timeoutUser(
-        request.body.userId,
-        request.body.durationSeconds,
-        request.body.reason,
-      );
-      return reply.code(204).send();
-    },
-  );
+    await localRuntime.timeoutUser(
+      request.body.userId,
+      request.body.durationSeconds,
+      request.body.reason,
+    );
+    return reply.code(204).send();
+  });
 
   app.post<{ Body: unknown }>('/api/moderation/bans', async (request, reply) => {
     if (!isBanIntent(request.body)) {
@@ -396,17 +372,11 @@ export function createApp(): FastifyInstance {
   app.patch<{ Body: unknown; Params: RewardRouteParameters }>(
     '/api/rewards/:rewardId',
     async (request, reply) => {
-      if (
-        !isText(request.params.rewardId) ||
-        !isCustomRewardUpdateRequest(request.body)
-      ) {
+      if (!isText(request.params.rewardId) || !isCustomRewardUpdateRequest(request.body)) {
         return sendInvalidIntent(reply, 'invalid_reward_update');
       }
 
-      return localRuntime.updateCustomReward(
-        request.params.rewardId,
-        request.body,
-      );
+      return localRuntime.updateCustomReward(request.params.rewardId, request.body);
     },
   );
 
@@ -524,8 +494,7 @@ export function createApp(): FastifyInstance {
   app.get<{ Querystring: TwitchAuthorizationCallbackQuery }>(
     '/api/auth/twitch/callback',
     async (request, reply) => {
-      const { code, error, error_description: errorDescription, state } =
-        request.query;
+      const { code, error, error_description: errorDescription, state } = request.query;
 
       if (error) {
         return reply.code(400).send({
@@ -566,10 +535,7 @@ function sendTwitchAuthError(reply: FastifyReply, error: unknown): FastifyReply 
   });
 }
 
-function writeRuntimeStreamMessage(
-  reply: FastifyReply,
-  message: RuntimeStreamMessage,
-): void {
+function writeRuntimeStreamMessage(reply: FastifyReply, message: RuntimeStreamMessage): void {
   reply.raw.write(`event: ${message.kind}\ndata: ${JSON.stringify(message)}\n\n`);
 }
 
@@ -580,14 +546,8 @@ function sendInvalidIntent(reply: FastifyReply, error: string): FastifyReply {
   });
 }
 
-function isBanIntent(
-  value: unknown,
-): value is { reason?: string; userId: string } {
-  return (
-    isRecord(value) &&
-    isText(value['userId']) &&
-    isOptionalText(value['reason'], 500)
-  );
+function isBanIntent(value: unknown): value is { reason?: string; userId: string } {
+  return isRecord(value) && isText(value['userId']) && isOptionalText(value['reason'], 500);
 }
 
 function isChatSettingsUpdate(value: unknown): value is ChatSettingsUpdate {
@@ -638,9 +598,7 @@ function isCreatePredictionIntent(
   );
 }
 
-function isCustomRewardCreateRequest(
-  value: unknown,
-): value is CustomRewardCreateRequest {
+function isCustomRewardCreateRequest(value: unknown): value is CustomRewardCreateRequest {
   return (
     isRecord(value) &&
     isText(value['title'], 45) &&
@@ -649,26 +607,19 @@ function isCustomRewardCreateRequest(
   );
 }
 
-function isCustomRewardUpdateRequest(
-  value: unknown,
-): value is CustomRewardUpdateRequest {
+function isCustomRewardUpdateRequest(value: unknown): value is CustomRewardUpdateRequest {
   return (
     isRecord(value) &&
     Object.keys(value).length > 0 &&
     (value['title'] === undefined || isText(value['title'], 45)) &&
-    (value['cost'] === undefined ||
-      isIntegerInRange(value['cost'], 1, 1000000000)) &&
+    (value['cost'] === undefined || isIntegerInRange(value['cost'], 1, 1000000000)) &&
     isCustomRewardOptions(value, false)
   );
 }
 
-function isCustomRewardOptions(
-  value: Record<string, unknown>,
-  allowBaseFields: boolean,
-): boolean {
+function isCustomRewardOptions(value: Record<string, unknown>, allowBaseFields: boolean): boolean {
   const fields: Record<string, (field: unknown) => boolean> = {
-    backgroundColor: (field) =>
-      typeof field === 'string' && /^#[0-9a-fA-F]{6}$/.test(field),
+    backgroundColor: (field) => typeof field === 'string' && /^#[0-9a-fA-F]{6}$/.test(field),
     enabled: (field) => typeof field === 'boolean',
     globalCooldownSeconds: (field) => isIntegerInRange(field, 0, 604800),
     isGlobalCooldownEnabled: (field) => typeof field === 'boolean',
@@ -692,18 +643,11 @@ function isCustomRewardOptions(
   );
 }
 
-function isPollEndIntent(
-  value: unknown,
-): value is { status: 'ARCHIVED' | 'TERMINATED' } {
-  return (
-    isRecord(value) &&
-    (value['status'] === 'ARCHIVED' || value['status'] === 'TERMINATED')
-  );
+function isPollEndIntent(value: unknown): value is { status: 'ARCHIVED' | 'TERMINATED' } {
+  return isRecord(value) && (value['status'] === 'ARCHIVED' || value['status'] === 'TERMINATED');
 }
 
-function isPredictionUpdateIntent(
-  value: unknown,
-): value is {
+function isPredictionUpdateIntent(value: unknown): value is {
   status: 'CANCELED' | 'LOCKED' | 'RESOLVED';
   winningOutcomeId?: string;
 } {
@@ -741,16 +685,9 @@ function isTimeoutIntent(
   );
 }
 
-function isIntegerInRange(
-  value: unknown,
-  minimum: number,
-  maximum: number,
-): value is number {
+function isIntegerInRange(value: unknown, minimum: number, maximum: number): value is number {
   return (
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= minimum &&
-    value <= maximum
+    typeof value === 'number' && Number.isInteger(value) && value >= minimum && value <= maximum
   );
 }
 
@@ -758,11 +695,7 @@ function isOptionalBoolean(value: unknown): boolean {
   return value === undefined || typeof value === 'boolean';
 }
 
-function isOptionalIntegerInRange(
-  value: unknown,
-  minimum: number,
-  maximum: number,
-): boolean {
+function isOptionalIntegerInRange(value: unknown, minimum: number, maximum: number): boolean {
   return value === undefined || isIntegerInRange(value, minimum, maximum);
 }
 

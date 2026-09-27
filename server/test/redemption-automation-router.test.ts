@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { AutomationDefinition } from '../../shared/contracts/automation';
-import {
-  redemptionEventType,
-  RewardAutomationMapping,
-} from '../../shared/contracts/rewards';
+import { redemptionEventType, RewardAutomationMapping } from '../../shared/contracts/rewards';
 import { ApplicationEvent } from '../../shared/contracts/runtime-events';
 import {
   AlwaysConditionHandler,
@@ -69,12 +66,9 @@ test('retains manual-review redemptions without updating Twitch status', async (
 
 test('cancels mapped redemptions when configured and retains failed completion for review', async () => {
   const statuses: string[] = [];
-  const canceledRouter = createRouter(
-    'auto-cancel',
-    async (_rewardId, _redemptionId, status) => {
-      statuses.push(status);
-    },
-  );
+  const canceledRouter = createRouter('auto-cancel', async (_rewardId, _redemptionId, status) => {
+    statuses.push(status);
+  });
   const canceledEvents: ApplicationEvent[] = [];
 
   await canceledRouter.handle(redemptionEvent, (event) => {

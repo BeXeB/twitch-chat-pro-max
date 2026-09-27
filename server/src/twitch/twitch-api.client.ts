@@ -192,9 +192,7 @@ export class TwitchApiClient {
 
   async getUserIdByLogin(login: string): Promise<string> {
     const parameters = new URLSearchParams({ login });
-    const response = await this.request<TwitchHelixUserResponse>(
-      `/users?${parameters}`,
-    );
+    const response = await this.request<TwitchHelixUserResponse>(`/users?${parameters}`);
     const user = response.data[0];
 
     if (!user) {
@@ -219,10 +217,7 @@ export class TwitchApiClient {
     return response.data.map(normalizeReward);
   }
 
-  async getCustomReward(
-    broadcasterId: string,
-    rewardId: string,
-  ): Promise<ChannelPointReward> {
+  async getCustomReward(broadcasterId: string, rewardId: string): Promise<ChannelPointReward> {
     const parameters = new URLSearchParams({
       broadcaster_id: broadcasterId,
       id: rewardId,
@@ -270,26 +265,20 @@ export class TwitchApiClient {
     return readRewardResponse(response);
   }
 
-  async deleteCustomReward(
-    broadcasterId: string,
-    rewardId: string,
-  ): Promise<void> {
+  async deleteCustomReward(broadcasterId: string, rewardId: string): Promise<void> {
     const parameters = new URLSearchParams({
       broadcaster_id: broadcasterId,
       id: rewardId,
     });
 
-    await this.request<undefined>(
-      `/channel_points/custom_rewards?${parameters}`,
-      { method: 'DELETE' },
-    );
+    await this.request<undefined>(`/channel_points/custom_rewards?${parameters}`, {
+      method: 'DELETE',
+    });
   }
 
   async getStreamInfo(broadcasterId: string): Promise<TwitchStreamInfo | null> {
     const parameters = new URLSearchParams({ user_id: broadcasterId });
-    const response = await this.request<TwitchStreamListResponse>(
-      `/streams?${parameters}`,
-    );
+    const response = await this.request<TwitchStreamListResponse>(`/streams?${parameters}`);
     const stream = response.data[0];
 
     return stream
@@ -317,19 +306,16 @@ export class TwitchApiClient {
     },
     sessionId: string,
   ): Promise<void> {
-    await this.requestUrl<undefined>(
-      this.config.eventSubSubscriptionsUrl,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          ...subscription,
-          transport: {
-            method: 'websocket',
-            session_id: sessionId,
-          },
-        }),
-      },
-    );
+    await this.requestUrl<undefined>(this.config.eventSubSubscriptionsUrl, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...subscription,
+        transport: {
+          method: 'websocket',
+          session_id: sessionId,
+        },
+      }),
+    });
   }
 
   async banUser({
@@ -389,18 +375,15 @@ export class TwitchApiClient {
     outcomes,
     title,
   }: TwitchCreatePredictionRequest): Promise<string> {
-    const response = await this.request<TwitchCreatedResourceResponse>(
-      '/predictions',
-      {
-        body: JSON.stringify({
-          broadcaster_id: broadcasterId,
-          outcomes: outcomes.map((outcome) => ({ title: outcome })),
-          prediction_window: durationSeconds,
-          title,
-        }),
-        method: 'POST',
-      },
-    );
+    const response = await this.request<TwitchCreatedResourceResponse>('/predictions', {
+      body: JSON.stringify({
+        broadcaster_id: broadcasterId,
+        outcomes: outcomes.map((outcome) => ({ title: outcome })),
+        prediction_window: durationSeconds,
+        title,
+      }),
+      method: 'POST',
+    });
 
     return readCreatedResourceId(response, 'prediction');
   }
@@ -418,11 +401,7 @@ export class TwitchApiClient {
     });
   }
 
-  async endPoll({
-    broadcasterId,
-    pollId,
-    status,
-  }: TwitchEndPollRequest): Promise<void> {
+  async endPoll({ broadcasterId, pollId, status }: TwitchEndPollRequest): Promise<void> {
     const parameters = new URLSearchParams({
       broadcaster_id: broadcasterId,
       id: pollId,
@@ -439,24 +418,18 @@ export class TwitchApiClient {
     message,
     senderId,
   }: TwitchChatMessageRequest): Promise<string> {
-    const response = await this.request<TwitchChatMessageResponse>(
-      '/chat/messages',
-      {
-        body: JSON.stringify({
-          broadcaster_id: broadcasterId,
-          message,
-          sender_id: senderId,
-        }),
-        method: 'POST',
-      },
-    );
+    const response = await this.request<TwitchChatMessageResponse>('/chat/messages', {
+      body: JSON.stringify({
+        broadcaster_id: broadcasterId,
+        message,
+        sender_id: senderId,
+      }),
+      method: 'POST',
+    });
     const result = response.data[0];
 
     if (!result) {
-      throw new TwitchApiError(
-        'Twitch did not return a chat message result.',
-        200,
-      );
+      throw new TwitchApiError('Twitch did not return a chat message result.', 200);
     }
 
     if (!result.is_sent) {
@@ -512,11 +485,7 @@ export class TwitchApiClient {
     });
   }
 
-  async unbanUser({
-    broadcasterId,
-    moderatorId,
-    userId,
-  }: TwitchBanUserRequest): Promise<void> {
+  async unbanUser({ broadcasterId, moderatorId, userId }: TwitchBanUserRequest): Promise<void> {
     const parameters = createModerationParameters(broadcasterId, moderatorId);
     parameters.set('user_id', userId);
 
@@ -580,13 +549,10 @@ export class TwitchApiClient {
       parameters.append('id', redemptionId);
     }
 
-    await this.request<undefined>(
-      `/channel_points/custom_rewards/redemptions?${parameters}`,
-      {
-        body: JSON.stringify({ status }),
-        method: 'PATCH',
-      },
-    );
+    await this.request<undefined>(`/channel_points/custom_rewards/redemptions?${parameters}`, {
+      body: JSON.stringify({ status }),
+      method: 'PATCH',
+    });
   }
 
   async resolvePrediction({
@@ -616,17 +582,11 @@ export class TwitchApiClient {
     });
   }
 
-  private async request<T>(
-    path: string,
-    options: RequestInit = {},
-  ): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     return this.requestUrl(`${this.config.helixUrl}${path}`, options);
   }
 
-  private async requestUrl<T>(
-    url: string,
-    options: RequestInit = {},
-  ): Promise<T> {
+  private async requestUrl<T>(url: string, options: RequestInit = {}): Promise<T> {
     const accessToken = await this.twitchAuth.getAccessToken();
 
     if (!accessToken) {
@@ -706,10 +666,7 @@ function getUpstreamErrorMessage(text: string): string | null {
   return null;
 }
 
-function createModerationParameters(
-  broadcasterId: string,
-  moderatorId: string,
-): URLSearchParams {
+function createModerationParameters(broadcasterId: string, moderatorId: string): URLSearchParams {
   return new URLSearchParams({
     broadcaster_id: broadcasterId,
     moderator_id: moderatorId,
@@ -759,27 +716,22 @@ function createCustomRewardBody(
   return body;
 }
 
-function normalizeReward(
-  reward: TwitchRewardListResponse['data'][number],
-): ChannelPointReward {
+function normalizeReward(reward: TwitchRewardListResponse['data'][number]): ChannelPointReward {
   return {
     backgroundColor: reward.background_color,
     cost: reward.cost,
-    globalCooldownSeconds:
-      reward.global_cooldown_setting?.is_enabled
-        ? reward.global_cooldown_setting.global_cooldown_seconds
-        : null,
+    globalCooldownSeconds: reward.global_cooldown_setting?.is_enabled
+      ? reward.global_cooldown_setting.global_cooldown_seconds
+      : null,
     id: reward.id,
     isEnabled: reward.is_enabled,
     isUserInputRequired: reward.is_user_input_required,
-    maxPerStream:
-      reward.max_per_stream_setting?.is_enabled
-        ? reward.max_per_stream_setting.max_per_stream
-        : null,
-    maxPerUserPerStream:
-      reward.max_per_user_per_stream_setting?.is_enabled
-        ? reward.max_per_user_per_stream_setting.max_per_user_per_stream
-        : null,
+    maxPerStream: reward.max_per_stream_setting?.is_enabled
+      ? reward.max_per_stream_setting.max_per_stream
+      : null,
+    maxPerUserPerStream: reward.max_per_user_per_stream_setting?.is_enabled
+      ? reward.max_per_user_per_stream_setting.max_per_user_per_stream
+      : null,
     prompt: reward.prompt || null,
     title: reward.title,
   };

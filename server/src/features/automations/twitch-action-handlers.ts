@@ -33,11 +33,7 @@ export class AddChannelVipActionHandler implements AutomationActionHandler {
     action: AddChannelVipAction,
     context: AutomationActionContext,
   ): Promise<AutomationActionExecutionStatus> {
-    const userId = renderRequired(
-      action.targetUserId,
-      context.event,
-      'VIP target user ID',
-    );
+    const userId = renderRequired(action.targetUserId, context.event, 'VIP target user ID');
 
     await this.addChannelVip(userId);
     emitActionEvent(context, 'automation.channel-vip-added', { userId });
@@ -45,25 +41,17 @@ export class AddChannelVipActionHandler implements AutomationActionHandler {
   }
 }
 
-export class AddLeaderboardPointsActionHandler
-  implements AutomationActionHandler
-{
+export class AddLeaderboardPointsActionHandler implements AutomationActionHandler {
   readonly type = 'add-leaderboard-points' as const;
 
-  constructor(
-    private readonly addPoints: (userId: string, points: number) => Promise<number>,
-  ) {}
+  constructor(private readonly addPoints: (userId: string, points: number) => Promise<number>) {}
 
   async execute(
     action: AddLeaderboardPointsAction,
     context: AutomationActionContext,
   ): Promise<AutomationActionExecutionStatus> {
     const userId = renderRequired(action.userId, context.event, 'leaderboard user ID');
-    const pointsText = renderRequired(
-      action.points,
-      context.event,
-      'leaderboard points',
-    );
+    const pointsText = renderRequired(action.points, context.event, 'leaderboard points');
     const points = Number(pointsText);
 
     if (!Number.isSafeInteger(points) || points < 1) {
@@ -80,9 +68,7 @@ export class AddLeaderboardPointsActionHandler
   }
 }
 
-export class IncreaseCustomRewardCostActionHandler
-  implements AutomationActionHandler
-{
+export class IncreaseCustomRewardCostActionHandler implements AutomationActionHandler {
   readonly type = 'increase-custom-reward-cost' as const;
 
   constructor(
@@ -111,9 +97,7 @@ export class IncreaseCustomRewardCostActionHandler
 export class BanUserActionHandler implements AutomationActionHandler {
   readonly type = 'ban-user' as const;
 
-  constructor(
-    private readonly banUser: (userId: string, reason?: string) => Promise<void>,
-  ) {}
+  constructor(private readonly banUser: (userId: string, reason?: string) => Promise<void>) {}
 
   async execute(
     action: BanUserAction,
@@ -174,11 +158,7 @@ export class CreatePredictionActionHandler implements AutomationActionHandler {
   ): Promise<AutomationActionExecutionStatus> {
     const title = renderRequired(action.title, context.event, 'prediction title', 45);
     const outcomes = renderTextList(action.outcomes, context.event, 'prediction outcome', 25);
-    const predictionId = await this.createPrediction(
-      title,
-      outcomes,
-      action.durationSeconds,
-    );
+    const predictionId = await this.createPrediction(title, outcomes, action.durationSeconds);
 
     emitActionEvent(context, 'automation.prediction-created', {
       durationSeconds: action.durationSeconds,
@@ -211,10 +191,7 @@ export class EndPollActionHandler implements AutomationActionHandler {
   readonly type = 'end-poll' as const;
 
   constructor(
-    private readonly endPoll: (
-      pollId: string,
-      status: EndPollAction['status'],
-    ) => Promise<void>,
+    private readonly endPoll: (pollId: string, status: EndPollAction['status']) => Promise<void>,
   ) {}
 
   async execute(
@@ -244,15 +221,8 @@ export class ResolvePredictionActionHandler implements AutomationActionHandler {
     action: ResolvePredictionAction,
     context: AutomationActionContext,
   ): Promise<AutomationActionExecutionStatus> {
-    const predictionId = renderRequired(
-      action.predictionId,
-      context.event,
-      'prediction ID',
-    );
-    const winningOutcomeId = renderOptional(
-      action.winningOutcomeId,
-      context.event,
-    );
+    const predictionId = renderRequired(action.predictionId, context.event, 'prediction ID');
+    const winningOutcomeId = renderOptional(action.winningOutcomeId, context.event);
 
     await this.resolvePrediction(predictionId, action.status, winningOutcomeId);
     emitActionEvent(context, 'automation.prediction-updated', {
@@ -357,11 +327,7 @@ export class UpdateRedemptionStatusActionHandler implements AutomationActionHand
     context: AutomationActionContext,
   ): Promise<AutomationActionExecutionStatus> {
     const rewardId = renderRequired(action.rewardId, context.event, 'reward ID');
-    const redemptionIds = renderTextList(
-      action.redemptionIds,
-      context.event,
-      'redemption ID',
-    );
+    const redemptionIds = renderTextList(action.redemptionIds, context.event, 'redemption ID');
 
     await this.updateRedemptionStatus(rewardId, redemptionIds, action.status);
     emitActionEvent(context, 'automation.redemption-status-updated', {
@@ -432,7 +398,5 @@ function renderTextList(
   label: string,
   maximumLength?: number,
 ): string[] {
-  return templates.map((template) =>
-    renderRequired(template, event, label, maximumLength),
-  );
+  return templates.map((template) => renderRequired(template, event, label, maximumLength));
 }

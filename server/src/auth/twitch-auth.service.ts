@@ -135,18 +135,14 @@ export class TwitchAuthService {
       return this.refreshPromise;
     }
 
-    this.refreshPromise = this.refreshStoredToken(this.token.refresh_token).finally(
-      () => {
-        this.refreshPromise = null;
-      },
-    );
+    this.refreshPromise = this.refreshStoredToken(this.token.refresh_token).finally(() => {
+      this.refreshPromise = null;
+    });
 
     return this.refreshPromise;
   }
 
-  private async requestToken(
-    parameters: Record<string, string>,
-  ): Promise<TwitchTokenResponse> {
+  private async requestToken(parameters: Record<string, string>): Promise<TwitchTokenResponse> {
     let response: Response;
 
     try {
@@ -199,9 +195,7 @@ export class TwitchAuthService {
     }
   }
 
-  private async refreshStoredToken(
-    refreshToken: string,
-  ): Promise<string | null> {
+  private async refreshStoredToken(refreshToken: string): Promise<string | null> {
     if (!this.config) {
       return null;
     }
@@ -217,10 +211,7 @@ export class TwitchAuthService {
       await this.storeToken(token);
       return this.token?.access_token ?? null;
     } catch (error) {
-      if (
-        error instanceof TwitchAuthError &&
-        (error.status === 400 || error.status === 401)
-      ) {
+      if (error instanceof TwitchAuthError && (error.status === 400 || error.status === 401)) {
         this.token = null;
         await this.refreshTokenStore.clear();
         return null;

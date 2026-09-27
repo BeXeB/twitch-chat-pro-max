@@ -3,18 +3,9 @@ import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import {
-  AutomationAction,
-  AutomationDefinition,
-} from '../../../../shared/contracts/automation';
-import {
-  CommandDefinition,
-  CommandRole,
-  commandRoles,
-} from '../../../../shared/contracts/command';
-import {
-  ApplicationEvent,
-} from '../../../../shared/contracts/runtime-events';
+import { AutomationAction, AutomationDefinition } from '../../../../shared/contracts/automation';
+import { CommandDefinition, CommandRole, commandRoles } from '../../../../shared/contracts/command';
+import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import {
   RedemptionCompletionPolicy,
   RewardAutomationMapping,
@@ -70,9 +61,7 @@ export class DashboardComponent implements OnInit {
     'command.executed',
   ];
   readonly commandAutomations = computed(() =>
-    this.automations().filter(
-      (automation) => automation.trigger.eventType === 'command.executed',
-    ),
+    this.automations().filter((automation) => automation.trigger.eventType === 'command.executed'),
   );
   readonly rewardAutomations = computed(() =>
     this.automations().filter(
@@ -121,14 +110,13 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
 
     try {
-      const [automations, commands, rewards, mappings, streamInfo] =
-        await Promise.all([
-          this.runtime.getAutomations(),
-          this.runtime.getCommands(),
-          this.runtime.getCustomRewards(),
-          this.runtime.getRewardMappings(),
-          this.runtime.getStreamInfo().catch(() => null),
-        ]);
+      const [automations, commands, rewards, mappings, streamInfo] = await Promise.all([
+        this.runtime.getAutomations(),
+        this.runtime.getCommands(),
+        this.runtime.getCustomRewards(),
+        this.runtime.getRewardMappings(),
+        this.runtime.getStreamInfo().catch(() => null),
+      ]);
       this.automations.set(automations);
       this.commands.set(commands);
       this.rewards.set(rewards);
@@ -355,9 +343,7 @@ export class DashboardComponent implements OnInit {
           ? { followerModeDurationMinutes: Number(this.followerModeDurationMinutes) }
           : {}),
         slowMode: this.slowMode,
-        ...(this.slowMode
-          ? { slowModeWaitTimeSeconds: Number(this.slowModeWaitTimeSeconds) }
-          : {}),
+        ...(this.slowMode ? { slowModeWaitTimeSeconds: Number(this.slowModeWaitTimeSeconds) } : {}),
       });
       this.showNotice('Chat settings updated.', 'success');
     });
@@ -412,7 +398,10 @@ export class DashboardComponent implements OnInit {
   }
 
   automationNameFor(automationId: string): string {
-    return this.automations().find((automation) => automation.id === automationId)?.name ?? 'Unknown automation';
+    return (
+      this.automations().find((automation) => automation.id === automationId)?.name ??
+      'Unknown automation'
+    );
   }
 
   rewardTitleFor(rewardId: string): string {

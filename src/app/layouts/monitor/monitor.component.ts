@@ -104,10 +104,7 @@ export class MonitorComponent {
   }
 
   private async runSlashCommand(commandText: string): Promise<void> {
-    const [command = '', login, ...argumentsList] = commandText
-      .slice(1)
-      .trim()
-      .split(/\s+/);
+    const [command = '', login, ...argumentsList] = commandText.slice(1).trim().split(/\s+/);
     const normalizedCommand = command.toLowerCase();
 
     if (normalizedCommand === 'help') {
@@ -125,8 +122,7 @@ export class MonitorComponent {
         return;
       }
 
-      const actionName =
-        normalizedCommand === 'untimeout' ? 'Removed timeout from' : 'Unbanned';
+      const actionName = normalizedCommand === 'untimeout' ? 'Removed timeout from' : 'Unbanned';
       const succeeded = await this.runModerationAction(
         this.localRuntimeClient
           .getUserIdByLogin(login)
@@ -152,9 +148,7 @@ export class MonitorComponent {
       const succeeded = await this.runModerationAction(
         this.localRuntimeClient
           .getUserIdByLogin(login)
-          .then((userId) =>
-            this.localRuntimeClient.banUser(userId, reason || undefined),
-          ),
+          .then((userId) => this.localRuntimeClient.banUser(userId, reason || undefined)),
         `Banned ${login}.`,
         `Failed to ban ${login}.`,
       );
@@ -175,10 +169,7 @@ export class MonitorComponent {
         durationSeconds < 1 ||
         durationSeconds > 1209600
       ) {
-        this.showActionFeedback(
-          'Usage: /timeout <user> <seconds> [reason]',
-          false,
-        );
+        this.showActionFeedback('Usage: /timeout <user> <seconds> [reason]', false);
         return;
       }
 
@@ -187,11 +178,7 @@ export class MonitorComponent {
         this.localRuntimeClient
           .getUserIdByLogin(login)
           .then((userId) =>
-            this.localRuntimeClient.timeoutUser(
-              userId,
-              durationSeconds,
-              reason || undefined,
-            ),
+            this.localRuntimeClient.timeoutUser(userId, durationSeconds, reason || undefined),
           ),
         `Timed out ${login} for ${durationSeconds} seconds.`,
         `Failed to time out ${login}.`,
@@ -305,7 +292,5 @@ export class MonitorComponent {
     }, 3000);
   }
 
-  constructor(
-    private readonly localRuntimeClient: LocalRuntimeClient,
-  ) {}
+  constructor(private readonly localRuntimeClient: LocalRuntimeClient) {}
 }

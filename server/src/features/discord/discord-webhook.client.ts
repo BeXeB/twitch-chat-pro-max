@@ -10,8 +10,7 @@ export type DiscordWebhookFetch = (
 export class DiscordWebhookClient {
   constructor(
     private readonly webhookUrl: string | null,
-    private readonly fetcher: DiscordWebhookFetch = (input, init) =>
-      fetch(input, init),
+    private readonly fetcher: DiscordWebhookFetch = (input, init) => fetch(input, init),
   ) {}
 
   async send(message: DiscordWebhookMessage): Promise<void> {

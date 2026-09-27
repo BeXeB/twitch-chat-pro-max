@@ -41,10 +41,7 @@ test('persists continuations and records review status', async () => {
     const secondRepository = new FileContinuationRepository(filePath);
     assert.deepEqual(await secondRepository.listScheduled(), [continuation]);
     assert.deepEqual(
-      await secondRepository.markRequiresReview(
-        continuation.id,
-        'execution-failed',
-      ),
+      await secondRepository.markRequiresReview(continuation.id, 'execution-failed'),
       {
         ...continuation,
         reviewReason: 'execution-failed',

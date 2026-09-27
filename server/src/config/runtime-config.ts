@@ -40,25 +40,18 @@ export interface RuntimeConfig {
   twitchOAuth: TwitchOAuthConfig | null;
 }
 
-export function loadRuntimeConfig(
-  environment: NodeJS.ProcessEnv = process.env,
-): RuntimeConfig {
+export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env): RuntimeConfig {
   const clientId = environment['TWITCH_CLIENT_ID'];
   const clientSecret = environment['TWITCH_CLIENT_SECRET'];
-  const discordStreamWebhookUrl =
-    environment['DISCORD_STREAM_WEBHOOK_URL']?.trim() || null;
-  const dataDirectory =
-    environment['TWITCH_RUNTIME_DATA_DIR'] ?? join(process.cwd(), 'data');
+  const discordStreamWebhookUrl = environment['DISCORD_STREAM_WEBHOOK_URL']?.trim() || null;
+  const dataDirectory = environment['TWITCH_RUNTIME_DATA_DIR'] ?? join(process.cwd(), 'data');
 
   if (!clientId || !clientSecret) {
     return { dataDirectory, discordStreamWebhookUrl, twitchOAuth: null };
   }
 
-  const eventSubUrl =
-    environment['TWITCH_EVENTSUB_URL'] ??
-    'wss://eventsub.wss.twitch.tv/ws';
-  const helixUrl =
-    environment['TWITCH_HELIX_URL'] ?? 'https://api.twitch.tv/helix';
+  const eventSubUrl = environment['TWITCH_EVENTSUB_URL'] ?? 'wss://eventsub.wss.twitch.tv/ws';
+  const helixUrl = environment['TWITCH_HELIX_URL'] ?? 'https://api.twitch.tv/helix';
 
   return {
     dataDirectory,
@@ -67,25 +60,17 @@ export function loadRuntimeConfig(
       clientId,
       clientSecret,
       eventSubUrl,
-      eventSubSubscriptionsUrl: getEventSubSubscriptionsUrl(
-        eventSubUrl,
-        helixUrl,
-      ),
-      frontendOrigin:
-        environment['TWITCH_FRONTEND_ORIGIN'] ?? 'http://localhost:4200',
+      eventSubSubscriptionsUrl: getEventSubSubscriptionsUrl(eventSubUrl, helixUrl),
+      frontendOrigin: environment['TWITCH_FRONTEND_ORIGIN'] ?? 'http://localhost:4200',
       helixUrl,
       redirectUri:
-        environment['TWITCH_REDIRECT_URI'] ??
-        'http://127.0.0.1:4300/api/auth/twitch/callback',
+        environment['TWITCH_REDIRECT_URI'] ?? 'http://127.0.0.1:4300/api/auth/twitch/callback',
       scopes: twitchScopes,
     },
   };
 }
 
-function getEventSubSubscriptionsUrl(
-  eventSubUrl: string,
-  helixUrl: string,
-): string {
+function getEventSubSubscriptionsUrl(eventSubUrl: string, helixUrl: string): string {
   const endpoint = new URL(eventSubUrl);
 
   if (endpoint.hostname === 'eventsub.wss.twitch.tv') {

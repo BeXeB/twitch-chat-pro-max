@@ -9,11 +9,7 @@ export interface ApplicationEvent {
   payload: Record<string, unknown>;
   source: 'automation' | 'command' | 'manual' | 'twitch';
   targetAutomationId?: string;
-  type:
-    | `automation.${string}`
-    | `command.${string}`
-    | `manual.${string}`
-    | `twitch.${string}`;
+  type: `automation.${string}` | `command.${string}` | `manual.${string}` | `twitch.${string}`;
 }
 
 export interface RuntimeSnapshot {

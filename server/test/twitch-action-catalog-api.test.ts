@@ -21,8 +21,7 @@ const config: TwitchOAuthConfig = {
   clientId: 'client-id',
   clientSecret: 'client-secret',
   eventSubUrl: 'wss://eventsub.example.test/ws',
-  eventSubSubscriptionsUrl:
-    'https://api.example.test/helix/eventsub/subscriptions',
+  eventSubSubscriptionsUrl: 'https://api.example.test/helix/eventsub/subscriptions',
   frontendOrigin: 'http://localhost:4200',
   helixUrl: 'https://api.example.test/helix',
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',
@@ -342,7 +341,10 @@ test('increments a reward cost for every serialized redemption', async () => {
       operations.increaseCustomRewardCost('vip-reward', 8000),
     ]);
 
-    assert.deepEqual(updatedRewards.map((reward) => reward.cost), [14400, 22400]);
+    assert.deepEqual(
+      updatedRewards.map((reward) => reward.cost),
+      [14400, 22400],
+    );
     assert.deepEqual(
       requests.map(({ body, method }) => [method, body]),
       [
@@ -433,11 +435,10 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
       enabled: true,
       title: 'Highlight',
     });
-    const updatedReward = await twitchApi.updateCustomReward(
-      'broadcaster',
-      'reward-1',
-      { cost: 750, prompt: 'Pick a moment' },
-    );
+    const updatedReward = await twitchApi.updateCustomReward('broadcaster', 'reward-1', {
+      cost: 750,
+      prompt: 'Pick a moment',
+    });
     await twitchApi.deleteCustomReward('broadcaster', 'reward-1');
     const stream = await twitchApi.getStreamInfo('broadcaster');
 

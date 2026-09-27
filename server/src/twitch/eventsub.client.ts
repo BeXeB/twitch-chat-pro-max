@@ -43,73 +43,73 @@ export const getEventSubSubscriptionDefinitions = (
 ): EventSubSubscriptionDefinition[] => {
   const definitions: EventSubSubscriptionDefinition[] = [
     {
-    type: 'channel.chat.message',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
-  },
-  {
-    type: 'stream.online',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'stream.offline',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.follow',
-    version: '2',
-    condition: {
-      broadcaster_user_id: broadcasterId,
-      moderator_user_id: broadcasterId,
+      type: 'channel.chat.message',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId, user_id: broadcasterId },
     },
-  },
-  {
-    type: 'channel.subscribe',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.subscription.gift',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.subscription.message',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.cheer',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.raid',
-    version: '1',
-    condition: { to_broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.channel_points_custom_reward_redemption.add',
-    version: '1',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.hype_train.begin',
-    version: '2',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.hype_train.progress',
-    version: '2',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
-  {
-    type: 'channel.hype_train.end',
-    version: '2',
-    condition: { broadcaster_user_id: broadcasterId },
-  },
+    {
+      type: 'stream.online',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'stream.offline',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.follow',
+      version: '2',
+      condition: {
+        broadcaster_user_id: broadcasterId,
+        moderator_user_id: broadcasterId,
+      },
+    },
+    {
+      type: 'channel.subscribe',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.subscription.gift',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.subscription.message',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.cheer',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.raid',
+      version: '1',
+      condition: { to_broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.channel_points_custom_reward_redemption.add',
+      version: '1',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.hype_train.begin',
+      version: '2',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.hype_train.progress',
+      version: '2',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
+    {
+      type: 'channel.hype_train.end',
+      version: '2',
+      condition: { broadcaster_user_id: broadcasterId },
+    },
   ];
   const hostname = new URL(eventSubUrl).hostname;
 
@@ -171,10 +171,7 @@ export class EventSubClient {
     this.callbacks.onConnectionState('disconnected');
   }
 
-  private async connect(
-    endpoint: string,
-    preservesSubscriptions: boolean,
-  ): Promise<void> {
+  private async connect(endpoint: string, preservesSubscriptions: boolean): Promise<void> {
     const previousSocket = this.socket;
     const socket = new WebSocket(endpoint);
     this.socket = socket;
@@ -276,10 +273,7 @@ export class EventSubClient {
       }
 
       case 'session_reconnect': {
-        const reconnectUrl = readString(
-          message.payload['session'],
-          'reconnect_url',
-        );
+        const reconnectUrl = readString(message.payload['session'], 'reconnect_url');
 
         if (!reconnectUrl) {
           throw new Error('Twitch EventSub did not supply a reconnect URL.');
@@ -287,9 +281,7 @@ export class EventSubClient {
 
         void this.connect(reconnectUrl, true).catch((error: unknown) => {
           const reconnectError =
-            error instanceof Error
-              ? error
-              : new Error('Twitch EventSub reconnect failed.');
+            error instanceof Error ? error : new Error('Twitch EventSub reconnect failed.');
           this.callbacks.onError(reconnectError);
           this.scheduleReconnect();
         });
@@ -312,8 +304,7 @@ export class EventSubClient {
       try {
         await this.api.createEventSubSubscription(subscription, sessionId);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown subscription error.';
+        const message = error instanceof Error ? error.message : 'Unknown subscription error.';
         throw new Error(
           `Twitch EventSub subscription ${subscription.type} v${subscription.version} failed: ${message}`,
         );
@@ -334,19 +325,14 @@ export class EventSubClient {
       this.reconnectTimer = null;
       void this.connect(this.eventSubUrl, false).catch((error: unknown) => {
         const reconnectError =
-          error instanceof Error
-            ? error
-            : new Error('Twitch EventSub reconnect failed.');
+          error instanceof Error ? error : new Error('Twitch EventSub reconnect failed.');
         this.callbacks.onError(reconnectError);
         this.scheduleReconnect();
       });
     }, delay);
   }
 
-  private startKeepaliveWatchdog(
-    socket: WebSocket,
-    keepaliveTimeoutSeconds: number,
-  ): void {
+  private startKeepaliveWatchdog(socket: WebSocket, keepaliveTimeoutSeconds: number): void {
     this.keepaliveTimeoutMs = keepaliveTimeoutSeconds * 1000;
     this.lastMessageAt = Date.now();
     this.refreshKeepaliveWatchdog(socket);
@@ -430,7 +416,5 @@ function readNumber(value: unknown, key: string): number | null {
   const record = readRecord(value);
   const property = record?.[key];
 
-  return typeof property === 'number' && Number.isFinite(property)
-    ? property
-    : null;
+  return typeof property === 'number' && Number.isFinite(property) ? property : null;
 }

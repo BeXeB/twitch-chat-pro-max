@@ -40,9 +40,7 @@ export class FileRewardMappingRepository implements RewardMappingRepository {
   async remove(rewardId: string): Promise<boolean> {
     return this.enqueue(async () => {
       const document = await this.loadDocument();
-      const index = document.mappings.findIndex(
-        (mapping) => mapping.rewardId === rewardId,
-      );
+      const index = document.mappings.findIndex((mapping) => mapping.rewardId === rewardId);
 
       if (index === -1) {
         return false;
@@ -124,9 +122,7 @@ export class FileRewardMappingRepository implements RewardMappingRepository {
   }
 }
 
-export function isRewardAutomationMapping(
-  value: unknown,
-): value is RewardAutomationMapping {
+export function isRewardAutomationMapping(value: unknown): value is RewardAutomationMapping {
   return (
     isRecord(value) &&
     value['version'] === 1 &&
@@ -150,12 +146,7 @@ function isRewardMappingDocument(value: unknown): value is RewardMappingDocument
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

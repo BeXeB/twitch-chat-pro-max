@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  CommandDefinition,
-  CommandRole,
-  commandRoles,
-} from '../../../../shared/contracts/command';
+import { CommandDefinition, CommandRole, commandRoles } from '../../../../shared/contracts/command';
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import { CommandRepository } from './command-repository';
 
@@ -55,8 +51,7 @@ export class CommandService {
     }
 
     const definition = (await this.repository.listEnabled()).find(
-      (command) =>
-        command.name === parsed.name || command.aliases.includes(parsed.name),
+      (command) => command.name === parsed.name || command.aliases.includes(parsed.name),
     );
 
     if (!definition) {
@@ -117,11 +112,7 @@ export class CommandService {
 class CommandCooldownTracker {
   private readonly expirations = new Map<string, number>();
 
-  isAvailable(
-    command: CommandDefinition,
-    chatterId: string,
-    now: number,
-  ): boolean {
+  isAvailable(command: CommandDefinition, chatterId: string, now: number): boolean {
     if (!command.cooldown) {
       return true;
     }
@@ -142,10 +133,7 @@ class CommandCooldownTracker {
       return;
     }
 
-    this.expirations.set(
-      this.getKey(command, chatterId),
-      now + command.cooldown.durationMs,
-    );
+    this.expirations.set(this.getKey(command, chatterId), now + command.cooldown.durationMs);
   }
 
   private getKey(command: CommandDefinition, chatterId: string): string {
@@ -215,10 +203,7 @@ function parseInvocation(
   };
 }
 
-function readOptionalString(
-  value: Record<string, unknown>,
-  key: string,
-): string | undefined {
+function readOptionalString(value: Record<string, unknown>, key: string): string | undefined {
   const result = value[key];
 
   return typeof result === 'string' ? result : undefined;

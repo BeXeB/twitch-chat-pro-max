@@ -128,9 +128,7 @@ test('routes a command event only to its configured automation', async () => {
     (event) => emittedEvents.push(event),
   );
 
-  assert.deepEqual(result, [
-    { automationId: 'greet-automation', status: 'completed' },
-  ]);
+  assert.deepEqual(result, [{ automationId: 'greet-automation', status: 'completed' }]);
   assert.equal(emittedEvents.length, 1);
   assert.equal(emittedEvents[0].type, 'automation.greeted');
 });

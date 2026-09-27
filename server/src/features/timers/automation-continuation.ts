@@ -1,9 +1,7 @@
 import { AutomationAction } from '../../../../shared/contracts/automation';
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 
-export type ContinuationReviewReason =
-  | 'execution-failed'
-  | 'restart-non-idempotent';
+export type ContinuationReviewReason = 'execution-failed' | 'restart-non-idempotent';
 
 export interface AutomationContinuation {
   actions: AutomationAction[];

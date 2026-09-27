@@ -22,9 +22,7 @@ import {
   SendShoutoutActionHandler,
   UpdateChatSettingsActionHandler,
 } from '../src/features/automations/twitch-action-handlers';
-import {
-  ContinuationScheduleRequest,
-} from '../src/features/timers/automation-continuation';
+import { ContinuationScheduleRequest } from '../src/features/timers/automation-continuation';
 import { AutomationContinuationScheduler } from '../src/features/timers/continuation-scheduler';
 
 const raidEvent: ApplicationEvent = {
@@ -45,10 +43,7 @@ test('executes registered actions for matching events and respects cooldowns', a
       },
     ],
     conditions: {
-      children: [
-        { type: 'always' },
-        { path: 'viewers', type: 'event-field-equals', value: 25 },
-      ],
+      children: [{ type: 'always' }, { path: 'viewers', type: 'event-field-equals', value: 25 }],
       type: 'all',
     },
     cooldown: { durationMs: 60000 },
@@ -77,12 +72,8 @@ test('executes registered actions for matching events and respects cooldowns', a
     emittedEvents.push(event);
   });
 
-  assert.deepEqual(firstResult, [
-    { automationId: 'raid-automation', status: 'completed' },
-  ]);
-  assert.deepEqual(secondResult, [
-    { automationId: 'raid-automation', status: 'cooldown' },
-  ]);
+  assert.deepEqual(firstResult, [{ automationId: 'raid-automation', status: 'completed' }]);
+  assert.deepEqual(secondResult, [{ automationId: 'raid-automation', status: 'cooldown' }]);
   assert.equal(emittedEvents.length, 1);
   assert.equal(emittedEvents[0].source, 'automation');
   assert.equal(emittedEvents[0].type, 'automation.raid-alert');
@@ -148,9 +139,7 @@ test('shouts out raid sources, opens chat, and schedules follower mode restorati
 
   const result = await engine.handleEvent(raid, () => undefined);
 
-  assert.deepEqual(result, [
-    { automationId: 'raid-response', status: 'scheduled' },
-  ]);
+  assert.deepEqual(result, [{ automationId: 'raid-response', status: 'scheduled' }]);
   assert.deepEqual(calls, [
     ['shoutout', 'raider-1'],
     ['settings', { followerMode: false }],
@@ -334,10 +323,7 @@ test('grants VIP to the redeemer and increases the redeemed reward cost', async 
   ]);
   assert.deepEqual(
     emittedEvents.map((event) => event.type),
-    [
-      'automation.channel-vip-added',
-      'automation.custom-reward-cost-increased',
-    ],
+    ['automation.channel-vip-added', 'automation.custom-reward-cost-increased'],
   );
   assert.deepEqual(emittedEvents[1].payload, {
     amount: 8000,
@@ -397,38 +383,37 @@ test('records the redemption cost for the redeemer in the leaderboard', async ()
   });
 });
 
-  test('executes a scheduled automation through its existing action list', async () => {
-    const definition: AutomationDefinition = {
-      actions: [{ message: 'Discord reminder', type: 'send-chat' }],
-      conditions: { type: 'always' },
-      enabled: true,
-      id: 'discord-reminder',
-      name: 'Discord reminder',
-      schedule: { intervalMs: 600000, onlyWhileLive: true },
-      trigger: { eventType: 'command.executed', type: 'application-event' },
-      version: 1,
-    };
-    const sentMessages: string[] = [];
-    const engine = new AutomationEngine(
-      new InMemoryAutomationRepository([definition]),
-      new AutomationConditionRegistry([new AlwaysConditionHandler()]),
-      new AutomationActionRegistry([
-        new SendChatMessageActionHandler(async (message) => {
-          sentMessages.push(message);
-        }),
-      ]),
-    );
-    const emittedEvents: ApplicationEvent[] = [];
+test('executes a scheduled automation through its existing action list', async () => {
+  const definition: AutomationDefinition = {
+    actions: [{ message: 'Discord reminder', type: 'send-chat' }],
+    conditions: { type: 'always' },
+    enabled: true,
+    id: 'discord-reminder',
+    name: 'Discord reminder',
+    schedule: { intervalMs: 600000, onlyWhileLive: true },
+    trigger: { eventType: 'command.executed', type: 'application-event' },
+    version: 1,
+  };
+  const sentMessages: string[] = [];
+  const engine = new AutomationEngine(
+    new InMemoryAutomationRepository([definition]),
+    new AutomationConditionRegistry([new AlwaysConditionHandler()]),
+    new AutomationActionRegistry([
+      new SendChatMessageActionHandler(async (message) => {
+        sentMessages.push(message);
+      }),
+    ]),
+  );
+  const emittedEvents: ApplicationEvent[] = [];
 
-    const result = await engine.handleScheduledAutomation(
-      definition.id,
-      (event) => emittedEvents.push(event),
-    );
+  const result = await engine.handleScheduledAutomation(definition.id, (event) =>
+    emittedEvents.push(event),
+  );
 
-    assert.deepEqual(result, {
-      automationId: definition.id,
-      status: 'completed',
-    });
-    assert.deepEqual(sentMessages, ['Discord reminder']);
-    assert.equal(emittedEvents[0].type, 'automation.chat-message-sent');
+  assert.deepEqual(result, {
+    automationId: definition.id,
+    status: 'completed',
   });
+  assert.deepEqual(sentMessages, ['Discord reminder']);
+  assert.equal(emittedEvents[0].type, 'automation.chat-message-sent');
+});

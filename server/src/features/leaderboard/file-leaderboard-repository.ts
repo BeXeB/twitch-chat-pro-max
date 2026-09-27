@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import {
-  LeaderboardEntry,
-  LeaderboardRepository,
-  validateRecord,
-} from './leaderboard-repository';
+import { LeaderboardEntry, LeaderboardRepository, validateRecord } from './leaderboard-repository';
 
 interface LeaderboardDocument {
   entries: LeaderboardEntry[];
@@ -142,10 +138,5 @@ function isLeaderboardDocument(value: unknown): value is LeaderboardDocument {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }

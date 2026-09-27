@@ -13,9 +13,7 @@ export class SendDiscordWebhookActionHandler implements AutomationActionHandler 
   readonly type = 'send-discord-webhook' as const;
 
   constructor(
-    private readonly send: (
-      message: Omit<SendDiscordWebhookAction, 'type'>,
-    ) => Promise<void>,
+    private readonly send: (message: Omit<SendDiscordWebhookAction, 'type'>) => Promise<void>,
   ) {}
 
   async execute(

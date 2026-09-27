@@ -24,8 +24,7 @@ const config: TwitchOAuthConfig = {
   clientId: 'client-id',
   clientSecret: 'client-secret',
   eventSubUrl: 'wss://eventsub.example.test/ws',
-  eventSubSubscriptionsUrl:
-    'https://api.example.test/helix/eventsub/subscriptions',
+  eventSubSubscriptionsUrl: 'https://api.example.test/helix/eventsub/subscriptions',
   frontendOrigin: 'http://localhost:4200',
   helixUrl: 'https://api.example.test/helix',
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',
@@ -57,8 +56,7 @@ test('retries one Helix 401 with a refreshed backend token', async () => {
       return jsonResponse({
         access_token: oauthCalls === 1 ? 'initial-access' : 'refreshed-access',
         expires_in: 3600,
-        refresh_token:
-          oauthCalls === 1 ? 'initial-refresh' : 'refreshed-refresh',
+        refresh_token: oauthCalls === 1 ? 'initial-refresh' : 'refreshed-refresh',
         scope: [],
         token_type: 'bearer',
       });
@@ -66,9 +64,7 @@ test('retries one Helix 401 with a refreshed backend token', async () => {
 
     if (url === 'https://api.example.test/helix/users') {
       helixCalls += 1;
-      authorizations.push(
-        new Headers(init?.headers).get('Authorization') ?? '',
-      );
+      authorizations.push(new Headers(init?.headers).get('Authorization') ?? '');
 
       if (helixCalls === 1) {
         return new Response('', { status: 401 });
@@ -101,10 +97,7 @@ test('retries one Helix 401 with a refreshed backend token', async () => {
     assert.equal(user.displayName, 'Streamer');
     assert.equal(helixCalls, 2);
     assert.equal(oauthCalls, 2);
-    assert.deepEqual(authorizations, [
-      'Bearer initial-access',
-      'Bearer refreshed-access',
-    ]);
+    assert.deepEqual(authorizations, ['Bearer initial-access', 'Bearer refreshed-access']);
     assert.deepEqual(store.savedTokens, ['initial-refresh', 'refreshed-refresh']);
   } finally {
     globalThis.fetch = originalFetch;

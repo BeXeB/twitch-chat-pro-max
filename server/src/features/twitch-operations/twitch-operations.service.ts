@@ -5,10 +5,7 @@ import {
   CustomRewardUpdateRequest,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
-import {
-  TwitchApiClient,
-  TwitchCurrentUser,
-} from '../../twitch/twitch-api.client';
+import { TwitchApiClient, TwitchCurrentUser } from '../../twitch/twitch-api.client';
 
 export interface ConnectedTwitchContext {
   api: TwitchApiClient;
@@ -46,18 +43,12 @@ export class TwitchOperationsService {
     await api.addChannelVip({ broadcasterId: broadcaster.id, userId });
   }
 
-  async createCustomReward(
-    reward: CustomRewardCreateRequest,
-  ): Promise<ChannelPointReward> {
+  async createCustomReward(reward: CustomRewardCreateRequest): Promise<ChannelPointReward> {
     const { api, broadcaster } = this.getContext();
     return api.createCustomReward(broadcaster.id, reward);
   }
 
-  async createPoll(
-    title: string,
-    choices: string[],
-    durationSeconds: number,
-  ): Promise<string> {
+  async createPoll(title: string, choices: string[], durationSeconds: number): Promise<string> {
     const { api, broadcaster } = this.getContext();
 
     return api.createPoll({
@@ -98,10 +89,7 @@ export class TwitchOperationsService {
     await api.deleteCustomReward(broadcaster.id, rewardId);
   }
 
-  async endPoll(
-    pollId: string,
-    status: 'ARCHIVED' | 'TERMINATED',
-  ): Promise<void> {
+  async endPoll(pollId: string, status: 'ARCHIVED' | 'TERMINATED'): Promise<void> {
     const { api, broadcaster } = this.getContext();
     await api.endPoll({ broadcasterId: broadcaster.id, pollId, status });
   }
@@ -116,10 +104,7 @@ export class TwitchOperationsService {
     return api.getUserIdByLogin(login);
   }
 
-  async increaseCustomRewardCost(
-    rewardId: string,
-    amount: number,
-  ): Promise<ChannelPointReward> {
+  async increaseCustomRewardCost(rewardId: string, amount: number): Promise<ChannelPointReward> {
     const { api, broadcaster } = this.getContext();
     const queueKey = `${broadcaster.id}:${rewardId}`;
     const previousUpdate = this.rewardCostUpdateTails.get(queueKey);
@@ -184,11 +169,7 @@ export class TwitchOperationsService {
     });
   }
 
-  async timeoutUser(
-    target: string,
-    durationSeconds: number,
-    reason?: string,
-  ): Promise<void> {
+  async timeoutUser(target: string, durationSeconds: number, reason?: string): Promise<void> {
     const { api, broadcaster } = this.getContext();
     const normalizedTarget = target
       .trim()

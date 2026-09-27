@@ -25,9 +25,7 @@ export class RecurringAutomationScheduler {
 
   constructor(
     private readonly repository: AutomationRepository,
-    private readonly runAutomation: (
-      definition: AutomationDefinition,
-    ) => Promise<void>,
+    private readonly runAutomation: (definition: AutomationDefinition) => Promise<void>,
     private readonly onError = (error: unknown) => {
       const message =
         error instanceof Error ? error.message : 'Unknown scheduled automation error.';
@@ -62,14 +60,10 @@ export class RecurringAutomationScheduler {
   private async refresh(): Promise<void> {
     const definitions = (await this.repository.listEnabled()).filter(
       (definition) =>
-        definition.schedule &&
-        (!definition.schedule.onlyWhileLive || this.streamOnline),
+        definition.schedule && (!definition.schedule.onlyWhileLive || this.streamOnline),
     );
     const intervals = new Map(
-      definitions.map((definition) => [
-        definition.id,
-        definition.schedule!.intervalMs,
-      ]),
+      definitions.map((definition) => [definition.id, definition.schedule!.intervalMs]),
     );
 
     for (const [automationId, timer] of this.timers) {

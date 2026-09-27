@@ -13,9 +13,7 @@ export interface ContinuationRepository {
 }
 
 export class InMemoryContinuationRepository implements ContinuationRepository {
-  constructor(
-    private readonly continuations: AutomationContinuation[] = [],
-  ) {}
+  constructor(private readonly continuations: AutomationContinuation[] = []) {}
 
   async get(id: string): Promise<AutomationContinuation | null> {
     return this.continuations.find((continuation) => continuation.id === id) ?? null;
@@ -26,9 +24,7 @@ export class InMemoryContinuationRepository implements ContinuationRepository {
   }
 
   async listScheduled(): Promise<AutomationContinuation[]> {
-    return this.continuations.filter(
-      (continuation) => continuation.status === 'scheduled',
-    );
+    return this.continuations.filter((continuation) => continuation.status === 'scheduled');
   }
 
   async markRequiresReview(
@@ -47,9 +43,7 @@ export class InMemoryContinuationRepository implements ContinuationRepository {
   }
 
   async remove(id: string): Promise<boolean> {
-    const index = this.continuations.findIndex(
-      (continuation) => continuation.id === id,
-    );
+    const index = this.continuations.findIndex((continuation) => continuation.id === id);
 
     if (index === -1) {
       return false;

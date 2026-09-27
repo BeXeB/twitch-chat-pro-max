@@ -5,5 +5,5 @@ export interface EventSubMessage {
     message_timestamp: string;
   };
 
-  payload: any;
+  payload: unknown;
 }

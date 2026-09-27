@@ -9,15 +9,9 @@ import {
 } from '../../../../shared/contracts/runtime-events';
 import { LocalRuntimeStatus } from '../../../../shared/contracts/runtime-status';
 import { RuntimeViewState } from '../../../../shared/contracts/runtime-view-state';
-import {
-  AutomationDefinition,
-  ChatSettingsUpdate,
-} from '../../../../shared/contracts/automation';
+import { AutomationDefinition, ChatSettingsUpdate } from '../../../../shared/contracts/automation';
 import { CommandDefinition } from '../../../../shared/contracts/command';
-import {
-  ChannelPointReward,
-  RewardAutomationMapping,
-} from '../../../../shared/contracts/rewards';
+import { ChannelPointReward, RewardAutomationMapping } from '../../../../shared/contracts/rewards';
 import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
@@ -51,9 +45,7 @@ export class LocalRuntimeClient {
     this.loading.set(true);
 
     try {
-      const status = await firstValueFrom(
-        this.http.get<LocalRuntimeStatus>('/api/runtime/status'),
-      );
+      const status = await firstValueFrom(this.http.get<LocalRuntimeStatus>('/api/runtime/status'));
 
       this.status.set(status);
       this.error.set(null);
@@ -90,14 +82,10 @@ export class LocalRuntimeClient {
   }
 
   getAutomations(): Promise<AutomationDefinition[]> {
-    return firstValueFrom(
-      this.http.get<AutomationDefinition[]>('/api/automations'),
-    );
+    return firstValueFrom(this.http.get<AutomationDefinition[]>('/api/automations'));
   }
 
-  saveAutomation(
-    definition: AutomationDefinition,
-  ): Promise<AutomationDefinition> {
+  saveAutomation(definition: AutomationDefinition): Promise<AutomationDefinition> {
     return firstValueFrom(
       this.http.put<AutomationDefinition>(
         `/api/automations/${encodeURIComponent(definition.id)}`,
@@ -107,9 +95,7 @@ export class LocalRuntimeClient {
   }
 
   async deleteAutomation(id: string): Promise<boolean> {
-    await firstValueFrom(
-      this.http.delete<void>(`/api/automations/${encodeURIComponent(id)}`),
-    );
+    await firstValueFrom(this.http.delete<void>(`/api/automations/${encodeURIComponent(id)}`));
     return true;
   }
 
@@ -127,9 +113,7 @@ export class LocalRuntimeClient {
   }
 
   async deleteCommand(id: string): Promise<boolean> {
-    await firstValueFrom(
-      this.http.delete<void>(`/api/commands/${encodeURIComponent(id)}`),
-    );
+    await firstValueFrom(this.http.delete<void>(`/api/commands/${encodeURIComponent(id)}`));
     return true;
   }
 
@@ -140,18 +124,12 @@ export class LocalRuntimeClient {
 
   async getUserIdByLogin(login: string): Promise<string> {
     const result = await firstValueFrom(
-      this.http.get<{ userId: string }>(
-        `/api/users/by-login/${encodeURIComponent(login)}`,
-      ),
+      this.http.get<{ userId: string }>(`/api/users/by-login/${encodeURIComponent(login)}`),
     );
     return result.userId;
   }
 
-  async timeoutUser(
-    userId: string,
-    durationSeconds: number,
-    reason?: string,
-  ): Promise<boolean> {
+  async timeoutUser(userId: string, durationSeconds: number, reason?: string): Promise<boolean> {
     await firstValueFrom(
       this.http.post<void>('/api/moderation/timeouts', {
         userId,
@@ -163,9 +141,7 @@ export class LocalRuntimeClient {
   }
 
   async banUser(userId: string, reason?: string): Promise<boolean> {
-    await firstValueFrom(
-      this.http.post<void>('/api/moderation/bans', { userId, reason }),
-    );
+    await firstValueFrom(this.http.post<void>('/api/moderation/bans', { userId, reason }));
     return true;
   }
 
@@ -178,9 +154,7 @@ export class LocalRuntimeClient {
 
   async deleteChatMessage(messageId: string): Promise<boolean> {
     await firstValueFrom(
-      this.http.delete<void>(
-        `/api/moderation/chat/${encodeURIComponent(messageId)}`,
-      ),
+      this.http.delete<void>(`/api/moderation/chat/${encodeURIComponent(messageId)}`),
     );
     return true;
   }
@@ -191,9 +165,7 @@ export class LocalRuntimeClient {
   }
 
   async sendShoutout(targetBroadcasterId: string): Promise<boolean> {
-    await firstValueFrom(
-      this.http.post<void>('/api/chat/shoutouts', { targetBroadcasterId }),
-    );
+    await firstValueFrom(this.http.post<void>('/api/chat/shoutouts', { targetBroadcasterId }));
     return true;
   }
 
@@ -202,15 +174,11 @@ export class LocalRuntimeClient {
   }
 
   syncCustomRewards(): Promise<ChannelPointReward[]> {
-    return firstValueFrom(
-      this.http.post<ChannelPointReward[]>('/api/rewards/sync', {}),
-    );
+    return firstValueFrom(this.http.post<ChannelPointReward[]>('/api/rewards/sync', {}));
   }
 
   createCustomReward(reward: CustomRewardCreateRequest): Promise<ChannelPointReward> {
-    return firstValueFrom(
-      this.http.post<ChannelPointReward>('/api/rewards', reward),
-    );
+    return firstValueFrom(this.http.post<ChannelPointReward>('/api/rewards', reward));
   }
 
   updateCustomReward(
@@ -218,17 +186,12 @@ export class LocalRuntimeClient {
     updates: CustomRewardUpdateRequest,
   ): Promise<ChannelPointReward> {
     return firstValueFrom(
-      this.http.patch<ChannelPointReward>(
-        `/api/rewards/${encodeURIComponent(rewardId)}`,
-        updates,
-      ),
+      this.http.patch<ChannelPointReward>(`/api/rewards/${encodeURIComponent(rewardId)}`, updates),
     );
   }
 
   async deleteCustomReward(rewardId: string): Promise<boolean> {
-    await firstValueFrom(
-      this.http.delete<void>(`/api/rewards/${encodeURIComponent(rewardId)}`),
-    );
+    await firstValueFrom(this.http.delete<void>(`/api/rewards/${encodeURIComponent(rewardId)}`));
     return true;
   }
 
@@ -238,19 +201,15 @@ export class LocalRuntimeClient {
     status: 'CANCELED' | 'FULFILLED',
   ): Promise<boolean> {
     await firstValueFrom(
-      this.http.patch<void>(
-        `/api/rewards/${encodeURIComponent(rewardId)}/redemptions`,
-        { redemptionIds, status },
-      ),
+      this.http.patch<void>(`/api/rewards/${encodeURIComponent(rewardId)}/redemptions`, {
+        redemptionIds,
+        status,
+      }),
     );
     return true;
   }
 
-  createPoll(
-    title: string,
-    choices: string[],
-    durationSeconds = 60,
-  ): Promise<{ id: string }> {
+  createPoll(title: string, choices: string[], durationSeconds = 60): Promise<{ id: string }> {
     return firstValueFrom(
       this.http.post<{ id: string }>('/api/polls', {
         title,
@@ -260,10 +219,7 @@ export class LocalRuntimeClient {
     );
   }
 
-  async endPoll(
-    pollId: string,
-    status: 'ARCHIVED' | 'TERMINATED',
-  ): Promise<boolean> {
+  async endPoll(pollId: string, status: 'ARCHIVED' | 'TERMINATED'): Promise<boolean> {
     await firstValueFrom(
       this.http.patch<void>(`/api/polls/${encodeURIComponent(pollId)}`, { status }),
     );
@@ -290,10 +246,10 @@ export class LocalRuntimeClient {
     winningOutcomeId?: string,
   ): Promise<boolean> {
     await firstValueFrom(
-      this.http.patch<void>(
-        `/api/predictions/${encodeURIComponent(predictionId)}`,
-        { status, winningOutcomeId },
-      ),
+      this.http.patch<void>(`/api/predictions/${encodeURIComponent(predictionId)}`, {
+        status,
+        winningOutcomeId,
+      }),
     );
     return true;
   }
@@ -303,9 +259,7 @@ export class LocalRuntimeClient {
   }
 
   getRewardMappings(): Promise<RewardAutomationMapping[]> {
-    return firstValueFrom(
-      this.http.get<RewardAutomationMapping[]>('/api/reward-mappings'),
-    );
+    return firstValueFrom(this.http.get<RewardAutomationMapping[]>('/api/reward-mappings'));
   }
 
   saveRewardMapping(mapping: RewardAutomationMapping): Promise<RewardAutomationMapping> {
@@ -319,9 +273,7 @@ export class LocalRuntimeClient {
 
   async deleteRewardMapping(rewardId: string): Promise<boolean> {
     await firstValueFrom(
-      this.http.delete<void>(
-        `/api/reward-mappings/${encodeURIComponent(rewardId)}`,
-      ),
+      this.http.delete<void>(`/api/reward-mappings/${encodeURIComponent(rewardId)}`),
     );
     return true;
   }

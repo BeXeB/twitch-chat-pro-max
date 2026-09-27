@@ -163,10 +163,7 @@ export interface ChatSettingsUpdate {
   subscriberMode?: boolean;
 }
 
-export type AutomationCondition =
-  | AlwaysCondition
-  | ConditionGroup
-  | EventFieldEqualsCondition;
+export type AutomationCondition = AlwaysCondition | ConditionGroup | EventFieldEqualsCondition;
 
 export interface AlwaysCondition {
   type: 'always';

@@ -92,8 +92,5 @@ test('projects moderator deletions into shared chat state', () => {
     type: 'manual.chat-message-deleted',
   });
 
-  assert.deepEqual(afterMessageDeletion.deletedMessageIds, [
-    'message-1',
-    'message-2',
-  ]);
+  assert.deepEqual(afterMessageDeletion.deletedMessageIds, ['message-1', 'message-2']);
 });

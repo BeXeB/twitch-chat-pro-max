@@ -1,10 +1,4 @@
-export const commandRoles = [
-  'everyone',
-  'subscriber',
-  'vip',
-  'moderator',
-  'broadcaster',
-] as const;
+export const commandRoles = ['everyone', 'subscriber', 'vip', 'moderator', 'broadcaster'] as const;
 
 export type CommandRole = (typeof commandRoles)[number];
 

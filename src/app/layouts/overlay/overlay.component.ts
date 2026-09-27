@@ -10,13 +10,9 @@ import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.serv
   styleUrls: ['./overlay.component.css'],
 })
 export class OverlayComponent {
-  readonly messages = computed(() =>
-    [...this.runtime.viewState().chatMessages].slice(-14),
-  );
+  readonly messages = computed(() => [...this.runtime.viewState().chatMessages].slice(-14));
 
-  readonly alerts = computed(() =>
-    [...this.runtime.viewState().alerts].slice(-5).reverse(),
-  );
+  readonly alerts = computed(() => [...this.runtime.viewState().alerts].slice(-5).reverse());
 
   constructor(readonly runtime: LocalRuntimeClient) {}
 

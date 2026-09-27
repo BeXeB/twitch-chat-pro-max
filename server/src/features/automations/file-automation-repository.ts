@@ -43,9 +43,7 @@ export class FileAutomationRepository implements AutomationRepository {
   async remove(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const document = await this.loadDocument();
-      const index = document.automations.findIndex(
-        (automation) => automation.id === id,
-      );
+      const index = document.automations.findIndex((automation) => automation.id === id);
 
       if (index === -1) {
         return false;
@@ -60,9 +58,7 @@ export class FileAutomationRepository implements AutomationRepository {
   async upsert(definition: AutomationDefinition): Promise<void> {
     return this.enqueue(async () => {
       const document = await this.loadDocument();
-      const index = document.automations.findIndex(
-        (automation) => automation.id === definition.id,
-      );
+      const index = document.automations.findIndex((automation) => automation.id === definition.id);
 
       if (index === -1) {
         document.automations.push(structuredClone(definition));
@@ -127,9 +123,7 @@ export class FileAutomationRepository implements AutomationRepository {
   }
 }
 
-export function isAutomationDefinition(
-  value: unknown,
-): value is AutomationDefinition {
+export function isAutomationDefinition(value: unknown): value is AutomationDefinition {
   if (!isRecord(value)) {
     return false;
   }
@@ -157,13 +151,8 @@ function isAutomationSchedule(value: unknown): value is AutomationSchedule {
   );
 }
 
-function isApplicationEventType(
-  value: unknown,
-): value is ApplicationEvent['type'] {
-  return (
-    typeof value === 'string' &&
-    /^(automation|command|manual|twitch)\./.test(value)
-  );
+function isApplicationEventType(value: unknown): value is ApplicationEvent['type'] {
+  return typeof value === 'string' && /^(automation|command|manual|twitch)\./.test(value);
 }
 
 export function isAutomationAction(value: unknown): value is AutomationAction {
@@ -188,8 +177,7 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
       isText(value['content'], 2000) &&
       isOptionalText(value['username'], 80) &&
       (value['allowedRoleId'] === undefined ||
-        (typeof value['allowedRoleId'] === 'string' &&
-          /^\d{17,20}$/.test(value['allowedRoleId'])))
+        (typeof value['allowedRoleId'] === 'string' && /^\d{17,20}$/.test(value['allowedRoleId'])))
     );
   }
 
@@ -202,10 +190,7 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
   }
 
   if (value['type'] === 'increase-custom-reward-cost') {
-    return (
-      isRequiredText(value['rewardId']) &&
-      isIntegerInRange(value['amount'], 1, 1000000000)
-    );
+    return isRequiredText(value['rewardId']) && isIntegerInRange(value['amount'], 1, 1000000000);
   }
 
   if (value['type'] === 'timeout-user') {
@@ -217,10 +202,7 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
   }
 
   if (value['type'] === 'ban-user') {
-    return (
-      isRequiredText(value['targetUserId']) &&
-      isOptionalText(value['reason'], 500)
-    );
+    return isRequiredText(value['targetUserId']) && isOptionalText(value['reason'], 500);
   }
 
   if (value['type'] === 'unban-user') {
@@ -295,9 +277,7 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
 }
 
 function hasValidActionOrder(actions: AutomationAction[]): boolean {
-  return actions.every(
-    (action, index) => action.type !== 'delay' || index < actions.length - 1,
-  );
+  return actions.every((action, index) => action.type !== 'delay' || index < actions.length - 1);
 }
 
 function isChatSettingsUpdate(value: unknown): boolean {
@@ -330,10 +310,7 @@ function isChatSettingsUpdate(value: unknown): boolean {
 
 function isIntegerInRange(value: unknown, minimum: number, maximum: number): boolean {
   return (
-    typeof value === 'number' &&
-    Number.isInteger(value) &&
-    value >= minimum &&
-    value <= maximum
+    typeof value === 'number' && Number.isInteger(value) && value >= minimum && value <= maximum
   );
 }
 
@@ -341,11 +318,7 @@ function isOptionalBoolean(value: unknown): boolean {
   return value === undefined || typeof value === 'boolean';
 }
 
-function isOptionalIntegerInRange(
-  value: unknown,
-  minimum: number,
-  maximum: number,
-): boolean {
+function isOptionalIntegerInRange(value: unknown, minimum: number, maximum: number): boolean {
   return value === undefined || isIntegerInRange(value, minimum, maximum);
 }
 
@@ -397,10 +370,7 @@ function isAutomationCondition(value: unknown): value is AutomationCondition {
     case 'all':
     case 'any':
     case 'not':
-      return (
-        Array.isArray(value['children']) &&
-        value['children'].every(isAutomationCondition)
-      );
+      return Array.isArray(value['children']) && value['children'].every(isAutomationCondition);
     default:
       return false;
   }
@@ -433,12 +403,7 @@ function isCooldown(value: unknown): boolean {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

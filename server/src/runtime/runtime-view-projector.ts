@@ -31,14 +31,8 @@ export class RuntimeViewProjector {
     ['twitch.stream.offline', () => this.setStreamState('offline')],
     ['twitch.channel.follow', (event) => this.projectFollow(event)],
     ['twitch.channel.subscribe', (event) => this.projectSubscription(event)],
-    [
-      'twitch.channel.subscription.message',
-      (event) => this.projectSubscription(event),
-    ],
-    [
-      'twitch.channel.subscription.gift',
-      (event) => this.projectGiftSubscription(event),
-    ],
+    ['twitch.channel.subscription.message', (event) => this.projectSubscription(event)],
+    ['twitch.channel.subscription.gift', (event) => this.projectGiftSubscription(event)],
     ['twitch.channel.cheer', (event) => this.projectBits(event)],
     ['twitch.channel.raid', (event) => this.projectRaid(event)],
     [
@@ -118,9 +112,7 @@ export class RuntimeViewProjector {
   }
 
   private projectModeratedUser(event: ApplicationEvent): void {
-    const userId =
-      readString(event.payload, 'userId') ??
-      readString(event.payload, 'targetUserId');
+    const userId = readString(event.payload, 'userId') ?? readString(event.payload, 'targetUserId');
 
     if (!userId) {
       return;
@@ -136,8 +128,9 @@ export class RuntimeViewProjector {
   private markMessagesDeleted(messageIds: string[]): void {
     this.state = {
       ...this.state,
-      deletedMessageIds: [...new Set([...this.state.deletedMessageIds, ...messageIds])]
-        .slice(-maxChatMessages),
+      deletedMessageIds: [...new Set([...this.state.deletedMessageIds, ...messageIds])].slice(
+        -maxChatMessages,
+      ),
     };
   }
 
@@ -353,19 +346,13 @@ function readBoolean(record: Record<string, unknown>, key: string): boolean | nu
   return typeof value === 'boolean' ? value : null;
 }
 
-function readNumber(
-  record: Record<string, unknown> | null,
-  key: string,
-): number | null {
+function readNumber(record: Record<string, unknown> | null, key: string): number | null {
   const value = record?.[key];
 
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function readOptionalString(
-  record: Record<string, unknown>,
-  key: string,
-): string | null {
+function readOptionalString(record: Record<string, unknown>, key: string): string | null {
   return readString(record, key);
 }
 
@@ -375,10 +362,7 @@ function readRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function readString(
-  record: Record<string, unknown> | null,
-  key: string,
-): string | null {
+function readString(record: Record<string, unknown> | null, key: string): string | null {
   const value = record?.[key];
 
   return typeof value === 'string' ? value : null;

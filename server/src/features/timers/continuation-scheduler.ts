@@ -10,9 +10,7 @@ import {
 import { ContinuationRepository } from './continuation-repository';
 
 export interface AutomationContinuationScheduler {
-  schedule(
-    request: ContinuationScheduleRequest,
-  ): Promise<ContinuationScheduleResult>;
+  schedule(request: ContinuationScheduleRequest): Promise<ContinuationScheduleResult>;
 }
 
 export interface ContinuationTimerApi {
@@ -26,12 +24,12 @@ const defaultTimerApi: ContinuationTimerApi = {
 };
 
 export class ContinuationScheduler implements AutomationContinuationScheduler {
-  private executeContinuation: ((continuation: AutomationContinuation) => Promise<void>) | null = null;
+  private executeContinuation: ((continuation: AutomationContinuation) => Promise<void>) | null =
+    null;
 
-  private handleReview: ((
-    continuation: AutomationContinuation,
-    reason: ContinuationReviewReason,
-  ) => Promise<void>) | null = null;
+  private handleReview:
+    | ((continuation: AutomationContinuation, reason: ContinuationReviewReason) => Promise<void>)
+    | null = null;
 
   private readonly timers = new Map<string, unknown>();
 
@@ -50,9 +48,7 @@ export class ContinuationScheduler implements AutomationContinuationScheduler {
     return this.repository.list();
   }
 
-  async schedule(
-    request: ContinuationScheduleRequest,
-  ): Promise<ContinuationScheduleResult> {
+  async schedule(request: ContinuationScheduleRequest): Promise<ContinuationScheduleResult> {
     const matchingContinuations = (await this.repository.listScheduled()).filter(
       (continuation) => continuation.automationId === request.automationId,
     );
@@ -62,9 +58,7 @@ export class ContinuationScheduler implements AutomationContinuationScheduler {
     }
 
     if (request.duplicatePolicy === 'replace') {
-      await Promise.all(
-        matchingContinuations.map((continuation) => this.cancel(continuation.id)),
-      );
+      await Promise.all(matchingContinuations.map((continuation) => this.cancel(continuation.id)));
     }
 
     const createdAt = new Date(this.now()).toISOString();

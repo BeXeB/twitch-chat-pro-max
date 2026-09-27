@@ -2,11 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import {
-  CommandDefinition,
-  CommandRole,
-  commandRoles,
-} from '../../../../shared/contracts/command';
+import { CommandDefinition, CommandRole, commandRoles } from '../../../../shared/contracts/command';
 import { CommandRepository } from './command-repository';
 
 interface CommandDocument {
@@ -58,9 +54,7 @@ export class FileCommandRepository implements CommandRepository {
   async upsert(definition: CommandDefinition): Promise<void> {
     return this.enqueue(async () => {
       const document = await this.loadDocument();
-      const index = document.commands.findIndex(
-        (command) => command.id === definition.id,
-      );
+      const index = document.commands.findIndex((command) => command.id === definition.id);
       const commands = [...document.commands];
 
       if (index === -1) {
@@ -195,9 +189,7 @@ function isCommandDocument(value: unknown): value is CommandDocument {
 
 function isCommandName(value: unknown): value is string {
   return (
-    typeof value === 'string' &&
-    value === value.toLowerCase() &&
-    commandNamePattern.test(value)
+    typeof value === 'string' && value === value.toLowerCase() && commandNamePattern.test(value)
   );
 }
 
@@ -206,12 +198,7 @@ function isCommandRole(value: unknown): value is CommandRole {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

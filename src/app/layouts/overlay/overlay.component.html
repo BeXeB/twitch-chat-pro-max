@@ -19,7 +19,13 @@
         <span>{{ message.message }}</span>
       </p>
     } @empty {
-      <p class="overlay-empty">{{ runtime.status()?.connectionState === 'connected' ? 'Chat is quiet' : 'Waiting for stream connection' }}</p>
+      <p class="overlay-empty">
+        {{
+          runtime.status()?.connectionState === 'connected'
+            ? 'Chat is quiet'
+            : 'Waiting for stream connection'
+        }}
+      </p>
     }
   </section>
 </main>

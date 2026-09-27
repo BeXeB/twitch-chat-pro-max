@@ -7,9 +7,7 @@ export interface RewardMappingRepository {
   upsert(mapping: RewardAutomationMapping): Promise<void>;
 }
 
-export class InMemoryRewardMappingRepository
-  implements RewardMappingRepository
-{
+export class InMemoryRewardMappingRepository implements RewardMappingRepository {
   constructor(private readonly mappings: RewardAutomationMapping[] = []) {}
 
   async get(rewardId: string): Promise<RewardAutomationMapping | null> {
@@ -21,9 +19,7 @@ export class InMemoryRewardMappingRepository
   }
 
   async remove(rewardId: string): Promise<boolean> {
-    const index = this.mappings.findIndex(
-      (mapping) => mapping.rewardId === rewardId,
-    );
+    const index = this.mappings.findIndex((mapping) => mapping.rewardId === rewardId);
 
     if (index === -1) {
       return false;

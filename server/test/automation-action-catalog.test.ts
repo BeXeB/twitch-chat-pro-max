@@ -64,11 +64,9 @@ test('executes the remaining action catalog through registered handlers', async 
       new UpdateChatSettingsActionHandler(async (settings) => {
         calls.push(['update-chat-settings', settings]);
       }),
-      new UpdateRedemptionStatusActionHandler(
-        async (rewardId, redemptionIds, status) => {
-          calls.push(['update-redemption', rewardId, redemptionIds, status]);
-        },
-      ),
+      new UpdateRedemptionStatusActionHandler(async (rewardId, redemptionIds, status) => {
+        calls.push(['update-redemption', rewardId, redemptionIds, status]);
+      }),
     ]),
   );
   const emittedEvents: ApplicationEvent[] = [];
@@ -145,10 +143,7 @@ test('persists only remaining actions when a delay schedules a continuation', as
   const engine = new AutomationEngine(
     new InMemoryAutomationRepository([definition]),
     new AutomationConditionRegistry([new AlwaysConditionHandler()]),
-    new AutomationActionRegistry([
-      new DelayActionHandler(),
-      new EmitRuntimeEventActionHandler(),
-    ]),
+    new AutomationActionRegistry([new DelayActionHandler(), new EmitRuntimeEventActionHandler()]),
     undefined,
     undefined,
     scheduler,

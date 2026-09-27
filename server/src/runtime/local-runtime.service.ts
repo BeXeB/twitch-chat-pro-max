@@ -15,10 +15,7 @@ import {
 import { LocalRuntimeStatus } from '../../../shared/contracts/runtime-status';
 import { TwitchAuthService } from '../auth/twitch-auth.service';
 import { TwitchOAuthConfig } from '../config/runtime-config';
-import {
-  EventSubClient,
-  EventSubNotification,
-} from '../twitch/eventsub.client';
+import { EventSubClient, EventSubNotification } from '../twitch/eventsub.client';
 import { TwitchApiClient, TwitchCurrentUser } from '../twitch/twitch-api.client';
 import { ApplicationEventDispatcher } from './application-event-dispatcher';
 import { RuntimeViewProjector } from './runtime-view-projector';
@@ -88,8 +85,7 @@ export class LocalRuntimeService {
 
   private broadcaster: TwitchCurrentUser | null = null;
 
-  private connectionState: LocalRuntimeStatus['connectionState'] =
-    'disconnected';
+  private connectionState: LocalRuntimeStatus['connectionState'] = 'disconnected';
 
   private readonly eventSub: EventSubClient | null;
 
@@ -113,9 +109,7 @@ export class LocalRuntimeService {
   ) {
     this.continuations = new ContinuationScheduler(continuationRepository);
     this.discordWebhookClient = new DiscordWebhookClient(discordStreamWebhookUrl);
-    this.operations = new TwitchOperationsService(() =>
-      this.getConnectedTwitchClient(),
-    );
+    this.operations = new TwitchOperationsService(() => this.getConnectedTwitchClient());
     this.automationEngine = new AutomationEngine(
       automationRepository,
       new AutomationConditionRegistry([
@@ -123,15 +117,11 @@ export class LocalRuntimeService {
         new EventFieldEqualsConditionHandler(),
       ]),
       new AutomationActionRegistry([
-        new AddChannelVipActionHandler((userId) =>
-          this.operations.addChannelVip(userId),
-        ),
+        new AddChannelVipActionHandler((userId) => this.operations.addChannelVip(userId)),
         new AddLeaderboardPointsActionHandler((userId, points) =>
           leaderboard.addPoints(userId, points),
         ),
-        new BanUserActionHandler((userId, reason) =>
-          this.operations.banUser(userId, reason),
-        ),
+        new BanUserActionHandler((userId, reason) => this.operations.banUser(userId, reason)),
         new CreatePollActionHandler((title, choices, durationSeconds) =>
           this.operations.createPoll(title, choices, durationSeconds),
         ),
@@ -143,31 +133,19 @@ export class LocalRuntimeService {
           this.operations.deleteChatMessage(messageId),
         ),
         new EmitRuntimeEventActionHandler(),
-        new EndPollActionHandler((pollId, status) =>
-          this.operations.endPoll(pollId, status),
-        ),
+        new EndPollActionHandler((pollId, status) => this.operations.endPoll(pollId, status)),
         new IncreaseCustomRewardCostActionHandler(async (rewardId, amount) => {
-          const reward = await this.operations.increaseCustomRewardCost(
-            rewardId,
-            amount,
-          );
+          const reward = await this.operations.increaseCustomRewardCost(rewardId, amount);
           this.rewards.update(reward);
           return reward.cost;
         }),
-        new ResolvePredictionActionHandler(
-          (predictionId, status, winningOutcomeId) =>
-            this.operations.resolvePrediction(
-              predictionId,
-              status,
-              winningOutcomeId,
-            ),
+        new ResolvePredictionActionHandler((predictionId, status, winningOutcomeId) =>
+          this.operations.resolvePrediction(predictionId, status, winningOutcomeId),
         ),
         new SendChatMessageActionHandler(async (message) => {
           await this.operations.sendChatMessage(message);
         }),
-        new SendDiscordWebhookActionHandler((message) =>
-          this.discordWebhookClient.send(message),
-        ),
+        new SendDiscordWebhookActionHandler((message) => this.discordWebhookClient.send(message)),
         new SendShoutoutActionHandler((targetBroadcasterId) =>
           this.operations.sendShoutout(targetBroadcasterId),
         ),
@@ -179,13 +157,8 @@ export class LocalRuntimeService {
         new UpdateChatSettingsActionHandler((settings) =>
           this.operations.updateChatSettings(settings),
         ),
-        new UpdateRedemptionStatusActionHandler(
-          (rewardId, redemptionIds, status) =>
-            this.operations.updateRedemptionStatus(
-              rewardId,
-              redemptionIds,
-              status,
-            ),
+        new UpdateRedemptionStatusActionHandler((rewardId, redemptionIds, status) =>
+          this.operations.updateRedemptionStatus(rewardId, redemptionIds, status),
         ),
       ]),
       undefined,
@@ -195,9 +168,8 @@ export class LocalRuntimeService {
     this.recurringAutomations = new RecurringAutomationScheduler(
       automationRepository,
       async (automation) => {
-        await this.automationEngine.handleScheduledAutomation(
-          automation.id,
-          (event) => this.applicationEvents.dispatch(event),
+        await this.automationEngine.handleScheduledAutomation(automation.id, (event) =>
+          this.applicationEvents.dispatch(event),
         );
       },
     );
@@ -227,12 +199,10 @@ export class LocalRuntimeService {
           console.error('Command execution failed:', message);
         });
       void this.handleAutomationEvent(event).catch((error: unknown) => {
-          const message =
-            error instanceof Error
-              ? error.message
-              : 'Unknown automation execution error.';
-          console.error('Automation execution failed:', message);
-        });
+        const message =
+          error instanceof Error ? error.message : 'Unknown automation execution error.';
+        console.error('Automation execution failed:', message);
+      });
     });
 
     if (!config) {
@@ -272,8 +242,7 @@ export class LocalRuntimeService {
         const streamInfo = await this.operations.getStreamInfo();
         await this.recurringAutomations.setStreamOnline(streamInfo !== null);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown stream status error.';
+        const message = error instanceof Error ? error.message : 'Unknown stream status error.';
         console.error('Unable to read Twitch stream status:', message);
       }
       await this.rewards.sync();
@@ -295,9 +264,8 @@ export class LocalRuntimeService {
   async start(): Promise<void> {
     await this.continuations.start(
       async (continuation) => {
-        await this.automationEngine.resumeContinuation(
-          continuation,
-          (event) => this.applicationEvents.dispatch(event),
+        await this.automationEngine.resumeContinuation(continuation, (event) =>
+          this.applicationEvents.dispatch(event),
         );
       },
       async (continuation, reason) => {
@@ -343,11 +311,7 @@ export class LocalRuntimeService {
     this.publishSnapshot();
   }
 
-  async timeoutUser(
-    userId: string,
-    durationSeconds: number,
-    reason?: string,
-  ): Promise<void> {
+  async timeoutUser(userId: string, durationSeconds: number, reason?: string): Promise<void> {
     await this.operations.timeoutUser(userId, durationSeconds, reason);
     this.publishManualEvent('manual.user-timed-out', {
       durationSeconds,
@@ -377,9 +341,7 @@ export class LocalRuntimeService {
     return this.operations.sendShoutout(targetBroadcasterId);
   }
 
-  async createCustomReward(
-    reward: CustomRewardCreateRequest,
-  ): Promise<ChannelPointReward> {
+  async createCustomReward(reward: CustomRewardCreateRequest): Promise<ChannelPointReward> {
     const createdReward = await this.operations.createCustomReward(reward);
     await this.rewards.sync();
     return createdReward;
@@ -408,18 +370,11 @@ export class LocalRuntimeService {
     return this.operations.updateRedemptionStatus(rewardId, redemptionIds, status);
   }
 
-  async createPoll(
-    title: string,
-    choices: string[],
-    durationSeconds: number,
-  ): Promise<string> {
+  async createPoll(title: string, choices: string[], durationSeconds: number): Promise<string> {
     return this.operations.createPoll(title, choices, durationSeconds);
   }
 
-  async endPoll(
-    pollId: string,
-    status: 'ARCHIVED' | 'TERMINATED',
-  ): Promise<void> {
+  async endPoll(pollId: string, status: 'ARCHIVED' | 'TERMINATED'): Promise<void> {
     return this.operations.endPoll(pollId, status);
   }
 
@@ -485,9 +440,8 @@ export class LocalRuntimeService {
   }
 
   private async handleAutomationEvent(event: ApplicationEvent): Promise<void> {
-    const handledRedemption = await this.redemptionRouter.handle(
-      event,
-      (derivedEvent) => this.applicationEvents.dispatch(derivedEvent),
+    const handledRedemption = await this.redemptionRouter.handle(event, (derivedEvent) =>
+      this.applicationEvents.dispatch(derivedEvent),
     );
 
     if (handledRedemption) {
@@ -519,10 +473,7 @@ export class LocalRuntimeService {
     };
   }
 
-  private publishManualEvent(
-    type: `manual.${string}`,
-    payload: Record<string, unknown>,
-  ): void {
+  private publishManualEvent(type: `manual.${string}`, payload: Record<string, unknown>): void {
     this.applicationEvents.dispatch({
       id: randomUUID(),
       occurredAt: new Date().toISOString(),
@@ -569,25 +520,17 @@ export class LocalRuntimeService {
 
   private updateStreamOnline(isOnline: boolean): void {
     void this.recurringAutomations.setStreamOnline(isOnline).catch((error: unknown) => {
-      const message =
-        error instanceof Error ? error.message : 'Unknown stream schedule error.';
+      const message = error instanceof Error ? error.message : 'Unknown stream schedule error.';
       console.error('Unable to update scheduled automations:', message);
     });
   }
 
-  private updateConnectionState(
-    connectionState: LocalRuntimeStatus['connectionState'],
-  ): void {
+  private updateConnectionState(connectionState: LocalRuntimeStatus['connectionState']): void {
     this.connectionState = connectionState;
     this.publishSnapshot();
   }
 }
 
 function isUnauthorizedError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    error.status === 401
-  );
+  return typeof error === 'object' && error !== null && 'status' in error && error.status === 401;
 }

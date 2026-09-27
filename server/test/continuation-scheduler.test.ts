@@ -16,7 +16,10 @@ const now = Date.parse('2026-09-27T00:00:00.000Z');
 test('applies duplicate policies and supports cancellation', async () => {
   const repository = new InMemoryContinuationRepository();
   const scheduler = new ContinuationScheduler(repository, () => now, noOpTimers);
-  await scheduler.start(async () => undefined, async () => undefined);
+  await scheduler.start(
+    async () => undefined,
+    async () => undefined,
+  );
 
   const first = await scheduler.schedule(scheduleRequest('allow', 'first-event'));
   const skipped = await scheduler.schedule(scheduleRequest('skip', 'second-event'));
@@ -82,9 +85,7 @@ const noOpTimers: ContinuationTimerApi = {
   set: () => ({}),
 };
 
-function continuation(
-  overrides: Partial<AutomationContinuation> = {},
-): AutomationContinuation {
+function continuation(overrides: Partial<AutomationContinuation> = {}): AutomationContinuation {
   return {
     actions: [],
     automationId: 'automation-1',

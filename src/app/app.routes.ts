@@ -11,16 +11,12 @@ export const routes: Routes = [
   {
     path: 'monitor',
     loadComponent: () =>
-      import('./layouts/monitor/monitor.component').then(
-        (m) => m.MonitorComponent,
-      ),
+      import('./layouts/monitor/monitor.component').then((m) => m.MonitorComponent),
   },
   {
     path: 'overlay',
     loadComponent: () =>
-      import('./layouts/overlay/overlay.component').then(
-        (component) => component.OverlayComponent,
-      ),
+      import('./layouts/overlay/overlay.component').then((component) => component.OverlayComponent),
   },
   {
     path: '',

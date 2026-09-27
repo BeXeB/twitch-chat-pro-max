@@ -1,7 +1,7 @@
 <div class="monitor flex-col">
   <header class="stream-header flex align-center justify-space-between">
     <div class="stream-status flex flex-row align-center">
-      @if ((streamState$ | async) === "online") {
+      @if ((streamState$ | async) === 'online') {
         <span class="status-dot online"></span>
         <span>LIVE</span>
       } @else {
@@ -28,7 +28,7 @@
         @for (alert of alerts$ | async; track alert.id) {
           <div class="alert" [class]="'alert-' + alert.type">
             @switch (alert.type) {
-              @case ("automation") {
+              @case ('automation') {
                 <strong>
                   {{ alert.data.title ?? 'Automation' }}
                 </strong>
@@ -38,7 +38,7 @@
                 </span>
               }
 
-              @case ("follow") {
+              @case ('follow') {
                 <strong>New Follow</strong>
 
                 <span>
@@ -46,7 +46,7 @@
                 </span>
               }
 
-              @case ("subscription") {
+              @case ('subscription') {
                 <strong>New Subscription</strong>
 
                 <span>
@@ -61,7 +61,7 @@
                 }
               }
 
-              @case ("gift-subscription") {
+              @case ('gift-subscription') {
                 <strong>Gift Subs</strong>
 
                 <span>
@@ -70,7 +70,7 @@
                 </span>
               }
 
-              @case ("bits") {
+              @case ('bits') {
                 <strong>Bits</strong>
 
                 <span>
@@ -84,7 +84,7 @@
                 }
               }
 
-              @case ("raid") {
+              @case ('raid') {
                 <strong>Raid</strong>
 
                 <span>
@@ -93,7 +93,7 @@
                 </span>
               }
 
-              @case ("redemption") {
+              @case ('redemption') {
                 <strong>
                   {{ alert.data.rewardTitle }}
                 </strong>
@@ -173,11 +173,8 @@
           [(ngModel)]="chatDraft"
           [disabled]="sendingChatMessage"
         />
-        <button
-          type="submit"
-          [disabled]="sendingChatMessage || !chatDraft.trim()"
-        >
-          {{ sendingChatMessage ? "Sending" : "Send" }}
+        <button type="submit" [disabled]="sendingChatMessage || !chatDraft.trim()">
+          {{ sendingChatMessage ? 'Sending' : 'Send' }}
         </button>
       </form>
     </section>

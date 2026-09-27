@@ -43,10 +43,7 @@ test('rejects webhook URLs outside Discord HTTPS endpoints', async () => {
     },
   );
 
-  await assert.rejects(
-    client.send({ content: 'Live now!' }),
-    /valid Discord webhook URL/,
-  );
+  await assert.rejects(client.send({ content: 'Live now!' }), /valid Discord webhook URL/);
   assert.equal(sent, false);
 });
 

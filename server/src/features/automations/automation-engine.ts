@@ -18,18 +18,10 @@ import { AutomationContinuationScheduler } from '../timers/continuation-schedule
 
 export interface AutomationExecutionResult {
   automationId: string;
-  status:
-    | 'completed'
-    | 'conditions-failed'
-    | 'cooldown'
-    | 'duplicate-skipped'
-    | 'scheduled';
+  status: 'completed' | 'conditions-failed' | 'cooldown' | 'duplicate-skipped' | 'scheduled';
 }
 
-export type AutomationActionExecutionStatus =
-  | 'continue'
-  | 'duplicate-skipped'
-  | 'scheduled';
+export type AutomationActionExecutionStatus = 'continue' | 'duplicate-skipped' | 'scheduled';
 
 export interface AutomationActionContext {
   emit(event: ApplicationEvent): void;
@@ -54,10 +46,7 @@ export interface AutomationConditionHandler {
 }
 
 export class AutomationActionRegistry {
-  private readonly handlers = new Map<
-    AutomationAction['type'],
-    AutomationActionHandler
-  >();
+  private readonly handlers = new Map<AutomationAction['type'], AutomationActionHandler>();
 
   constructor(handlers: AutomationActionHandler[]) {
     for (const handler of handlers) {
@@ -103,9 +92,7 @@ export class AutomationConditionRegistry {
         const handler = this.handlers.get(condition.type);
 
         if (!handler) {
-          throw new Error(
-            `No automation condition handler is registered for ${condition.type}.`,
-          );
+          throw new Error(`No automation condition handler is registered for ${condition.type}.`);
         }
 
         return handler.evaluate(condition, event);
@@ -152,9 +139,7 @@ export class AutomationEngine {
 
     const enabledDefinitions = await this.repository.listEnabled();
     const definitions = event.targetAutomationId
-      ? enabledDefinitions.filter(
-          (definition) => definition.id === event.targetAutomationId,
-        )
+      ? enabledDefinitions.filter((definition) => definition.id === event.targetAutomationId)
       : enabledDefinitions;
     const results: AutomationExecutionResult[] = [];
 
@@ -177,12 +162,7 @@ export class AutomationEngine {
 
       this.cooldowns.reserve(definition, now);
 
-      const status = await this.executeActions(
-        definition.id,
-        event,
-        definition.actions,
-        emit,
-      );
+      const status = await this.executeActions(definition.id, event, definition.actions, emit);
 
       results.push({ automationId: definition.id, status });
     }
@@ -195,8 +175,7 @@ export class AutomationEngine {
     emit: (event: ApplicationEvent) => void,
   ): Promise<AutomationExecutionResult | null> {
     const definition = (await this.repository.listEnabled()).find(
-      (automation) =>
-        automation.id === automationId && automation.schedule !== undefined,
+      (automation) => automation.id === automationId && automation.schedule !== undefined,
     );
 
     if (!definition) {
@@ -235,7 +214,9 @@ export class AutomationEngine {
     event: ApplicationEvent,
     actions: AutomationAction[],
     emit: (event: ApplicationEvent) => void,
-  ): Promise<Extract<AutomationExecutionResult['status'], 'completed' | 'duplicate-skipped' | 'scheduled'>> {
+  ): Promise<
+    Extract<AutomationExecutionResult['status'], 'completed' | 'duplicate-skipped' | 'scheduled'>
+  > {
     for (const [index, action] of actions.entries()) {
       const status = await this.actions.execute(action, {
         emit,
@@ -283,15 +264,10 @@ export class AlwaysConditionHandler implements AutomationConditionHandler {
   }
 }
 
-export class EventFieldEqualsConditionHandler
-  implements AutomationConditionHandler
-{
+export class EventFieldEqualsConditionHandler implements AutomationConditionHandler {
   readonly type = 'event-field-equals' as const;
 
-  evaluate(
-    condition: EventFieldEqualsCondition,
-    event: ApplicationEvent,
-  ): boolean {
+  evaluate(condition: EventFieldEqualsCondition, event: ApplicationEvent): boolean {
     return readPayloadValue(event.payload, condition.path) === condition.value;
   }
 }
@@ -332,7 +308,7 @@ export class SendChatMessageActionHandler implements AutomationActionHandler {
     }
 
     if (message.length > 500) {
-      throw new Error('The rendered chat message exceeds Twitch\'s 500 character limit.');
+      throw new Error("The rendered chat message exceeds Twitch's 500 character limit.");
     }
 
     await this.sendChatMessage(message);
@@ -364,10 +340,7 @@ export class TimeoutUserActionHandler implements AutomationActionHandler {
     action: TimeoutUserAction,
     context: AutomationActionContext,
   ): Promise<AutomationActionExecutionStatus> {
-    const targetUserId = renderEventPayloadTemplate(
-      action.targetUserId,
-      context.event,
-    ).trim();
+    const targetUserId = renderEventPayloadTemplate(action.targetUserId, context.event).trim();
     const reason = action.reason
       ? renderEventPayloadTemplate(action.reason, context.event).trim() || undefined
       : undefined;
@@ -405,10 +378,7 @@ export class DelayActionHandler implements AutomationActionHandler {
       throw new Error('The automation continuation scheduler is unavailable.');
     }
 
-    const result = await context.scheduleContinuation(
-      action.durationMs,
-      action.duplicatePolicy,
-    );
+    const result = await context.scheduleContinuation(action.durationMs, action.duplicatePolicy);
 
     if (result.status === 'scheduled') {
       context.emit({
@@ -429,10 +399,7 @@ export class DelayActionHandler implements AutomationActionHandler {
   }
 }
 
-function readPayloadValue(
-  payload: Record<string, unknown>,
-  path: string,
-): unknown {
+function readPayloadValue(payload: Record<string, unknown>, path: string): unknown {
   return path.split('.').reduce<unknown>((value, segment) => {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
       return undefined;
@@ -441,4 +408,3 @@ function readPayloadValue(
     return (value as Record<string, unknown>)[segment];
   }, payload);
 }
-

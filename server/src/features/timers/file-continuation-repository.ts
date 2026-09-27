@@ -4,10 +4,7 @@ import { dirname } from 'node:path';
 
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import { isAutomationAction } from '../automations/file-automation-repository';
-import {
-  AutomationContinuation,
-  ContinuationReviewReason,
-} from './automation-continuation';
+import { AutomationContinuation, ContinuationReviewReason } from './automation-continuation';
 import { ContinuationRepository } from './continuation-repository';
 
 interface ContinuationDocument {
@@ -43,9 +40,7 @@ export class FileContinuationRepository implements ContinuationRepository {
   }
 
   async listScheduled(): Promise<AutomationContinuation[]> {
-    return (await this.list()).filter(
-      (continuation) => continuation.status === 'scheduled',
-    );
+    return (await this.list()).filter((continuation) => continuation.status === 'scheduled');
   }
 
   async markRequiresReview(
@@ -72,9 +67,7 @@ export class FileContinuationRepository implements ContinuationRepository {
   async remove(id: string): Promise<boolean> {
     return this.enqueue(async () => {
       const document = await this.loadDocument();
-      const index = document.continuations.findIndex(
-        (continuation) => continuation.id === id,
-      );
+      const index = document.continuations.findIndex((continuation) => continuation.id === id);
 
       if (index === -1) {
         return false;
@@ -170,8 +163,7 @@ function isApplicationEvent(value: unknown): value is ApplicationEvent {
     /^(automation|command|manual|twitch)\./.test(value['type']) &&
     (value['causationId'] === undefined || typeof value['causationId'] === 'string') &&
     (value['correlationId'] === undefined || typeof value['correlationId'] === 'string') &&
-    (value['targetAutomationId'] === undefined ||
-      typeof value['targetAutomationId'] === 'string')
+    (value['targetAutomationId'] === undefined || typeof value['targetAutomationId'] === 'string')
   );
 }
 
@@ -203,12 +195,7 @@ function isContinuationDocument(value: unknown): value is ContinuationDocument {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

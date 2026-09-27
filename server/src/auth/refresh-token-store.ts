@@ -78,12 +78,7 @@ export class WindowsDpapiRefreshTokenStore implements RefreshTokenStore {
 }
 
 function isMissingFileError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT'
-  );
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
 }
 
 function runPowerShell(command: string, input: string): Promise<string> {

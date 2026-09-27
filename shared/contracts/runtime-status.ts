@@ -1,13 +1,6 @@
-export type TwitchConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reauth-required';
+export type TwitchConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reauth-required';
 
-export type TwitchAuthorizationState =
-  | 'unconfigured'
-  | 'unauthenticated'
-  | 'authorized';
+export type TwitchAuthorizationState = 'unconfigured' | 'unauthenticated' | 'authorized';
 
 export interface LocalRuntimeStatus {
   authorizationState: TwitchAuthorizationState;

@@ -26,7 +26,4 @@ export interface RewardAutomationMapping {
   version: 1;
 }
 
-export type RedemptionCompletionPolicy =
-  | 'auto-cancel'
-  | 'auto-fulfill'
-  | 'manual-review';
+export type RedemptionCompletionPolicy = 'auto-cancel' | 'auto-fulfill' | 'manual-review';

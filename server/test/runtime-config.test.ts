@@ -35,8 +35,7 @@ test('derives the production EventSub subscriptions endpoint from Helix', () => 
 });
 
 test('loads an optional Discord webhook URL independently of Twitch credentials', () => {
-  const webhookUrl =
-    'https://discord.com/api/webhooks/123456789012345678/fake-token';
+  const webhookUrl = 'https://discord.com/api/webhooks/123456789012345678/fake-token';
   const config = loadRuntimeConfig({
     DISCORD_STREAM_WEBHOOK_URL: webhookUrl,
   });

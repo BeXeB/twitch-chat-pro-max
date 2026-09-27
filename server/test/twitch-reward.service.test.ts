@@ -21,8 +21,7 @@ const config: TwitchOAuthConfig = {
   clientId: 'client-id',
   clientSecret: 'client-secret',
   eventSubUrl: 'wss://eventsub.example.test/ws',
-  eventSubSubscriptionsUrl:
-    'https://api.example.test/helix/eventsub/subscriptions',
+  eventSubSubscriptionsUrl: 'https://api.example.test/helix/eventsub/subscriptions',
   frontendOrigin: 'http://localhost:4200',
   helixUrl: 'https://api.example.test/helix',
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',
@@ -102,10 +101,12 @@ test('synchronizes and normalizes manageable channel-point rewards', async () =>
       },
     ]);
     assert.deepEqual(
-      (await twitchApi.getCustomRewards({
-        broadcasterId: 'broadcaster-1',
-        onlyManageableRewards: false,
-      })).map((reward) => reward.title),
+      (
+        await twitchApi.getCustomRewards({
+          broadcasterId: 'broadcaster-1',
+          onlyManageableRewards: false,
+        })
+      ).map((reward) => reward.title),
       ['Highlight message'],
     );
     assert.deepEqual(requests, [
