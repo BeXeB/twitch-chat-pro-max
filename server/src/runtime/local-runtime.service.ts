@@ -131,9 +131,9 @@ export class LocalRuntimeService {
               winningOutcomeId,
             ),
         ),
-        new SendChatMessageActionHandler((message) =>
-          this.operations.sendChatMessage(message),
-        ),
+        new SendChatMessageActionHandler(async (message) => {
+          await this.operations.sendChatMessage(message);
+        }),
         new SendShoutoutActionHandler((targetBroadcasterId) =>
           this.operations.sendShoutout(targetBroadcasterId),
         ),
@@ -272,7 +272,19 @@ export class LocalRuntimeService {
   }
 
   async sendChatMessage(message: string): Promise<void> {
-    return this.operations.sendChatMessage(message);
+    const { broadcaster } = this.getConnectedTwitchClient();
+    const messageId = await this.operations.sendChatMessage(message);
+
+    this.viewProjector.addChatMessage({
+      color: null,
+      displayName: broadcaster.displayName,
+      id: messageId,
+      message,
+      timestamp: new Date().toISOString(),
+      userId: broadcaster.id,
+      username: broadcaster.login,
+    });
+    this.publishSnapshot();
   }
 
   async timeoutUser(
@@ -373,6 +385,10 @@ export class LocalRuntimeService {
 
   async getStreamInfo(): Promise<TwitchStreamInfo | null> {
     return this.operations.getStreamInfo();
+  }
+
+  async getUserIdByLogin(login: string): Promise<string> {
+    return this.operations.getUserIdByLogin(login);
   }
 
   getStatus(): LocalRuntimeStatus {

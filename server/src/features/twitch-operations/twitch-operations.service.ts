@@ -94,6 +94,11 @@ export class TwitchOperationsService {
     return api.getStreamInfo(broadcaster.id);
   }
 
+  async getUserIdByLogin(login: string): Promise<string> {
+    const { api } = this.getContext();
+    return api.getUserIdByLogin(login);
+  }
+
   async resolvePrediction(
     predictionId: string,
     status: 'CANCELED' | 'LOCKED' | 'RESOLVED',
@@ -109,10 +114,10 @@ export class TwitchOperationsService {
     });
   }
 
-  async sendChatMessage(message: string): Promise<void> {
+  async sendChatMessage(message: string): Promise<string> {
     const { api, broadcaster } = this.getContext();
 
-    await api.sendChatMessage({
+    return api.sendChatMessage({
       broadcasterId: broadcaster.id,
       message,
       senderId: broadcaster.id,

@@ -55,6 +55,10 @@ interface ResourceRouteParameters {
   resourceId: string;
 }
 
+interface UserRouteParameters {
+  login: string;
+}
+
 export function createApp(): FastifyInstance {
   const app = Fastify({ logger: true });
 
@@ -279,6 +283,17 @@ export function createApp(): FastifyInstance {
   );
 
   app.get('/api/stream', async () => localRuntime.getStreamInfo());
+
+  app.get<{ Params: UserRouteParameters }>(
+    '/api/users/by-login/:login',
+    async (request, reply) => {
+      if (!/^[a-zA-Z0-9_]{1,25}$/.test(request.params.login)) {
+        return sendInvalidIntent(reply, 'invalid_twitch_login');
+      }
+
+      return { userId: await localRuntime.getUserIdByLogin(request.params.login) };
+    },
+  );
 
   app.post<{ Body: unknown }>('/api/chat/messages', async (request, reply) => {
     if (!isRecord(request.body) || !isText(request.body['message'], 500)) {

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { getEventSubSubscriptionDefinitions } from '../src/twitch/eventsub.client';
 
-test('omits chat message subscriptions for a local EventSub mock', () => {
+test('omits unsupported chat and Hype Train subscriptions for a local mock', () => {
   const subscriptions = getEventSubSubscriptionDefinitions(
     'broadcaster-id',
     'ws://localhost:8080/ws',
@@ -11,6 +11,10 @@ test('omits chat message subscriptions for a local EventSub mock', () => {
 
   assert.equal(
     subscriptions.some(({ type }) => type === 'channel.chat.message'),
+    false,
+  );
+  assert.equal(
+    subscriptions.some(({ type }) => type.startsWith('channel.hype_train.')),
     false,
   );
   assert.equal(subscriptions[0]?.type, 'stream.online');

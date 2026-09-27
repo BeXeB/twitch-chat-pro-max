@@ -115,7 +115,9 @@ export const getEventSubSubscriptionDefinitions = (
 
   if (['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
     return definitions.filter(
-      (definition) => definition.type !== 'channel.chat.message',
+      (definition) =>
+        definition.type !== 'channel.chat.message' &&
+        !definition.type.startsWith('channel.hype_train.'),
     );
   }
 

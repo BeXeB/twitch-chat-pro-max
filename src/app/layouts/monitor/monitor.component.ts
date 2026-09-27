@@ -1,7 +1,7 @@
 import { Component, HostListener } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { toObservable } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { map } from 'rxjs';
 
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
@@ -11,7 +11,7 @@ import { ChatMessage } from '../../core/twitch/models/chat-message.model';
 @Component({
   selector: 'app-monitor',
   standalone: true,
-  imports: [AsyncPipe, LinkifyPipe, RouterLink],
+  imports: [AsyncPipe, FormsModule, LinkifyPipe],
   templateUrl: './monitor.component.html',
   styleUrls: ['./monitor.component.css'],
 })
@@ -29,6 +29,8 @@ export class MonitorComponent {
 
   readonly viewState = this.localRuntimeClient.viewState;
 
+  readonly runtimeStatus = this.localRuntimeClient.status;
+
   readonly streamState$ = toObservable(this.localRuntimeClient.viewState).pipe(
     map((viewState) => viewState.streamState),
   );
@@ -38,6 +40,10 @@ export class MonitorComponent {
   );
 
   moderationFeedback: { message: string; success: boolean } | null = null;
+
+  chatDraft = '';
+
+  sendingChatMessage = false;
 
   selectedUser: ChatMessage | null = null;
 
@@ -59,6 +65,149 @@ export class MonitorComponent {
 
   closeUserActions(): void {
     this.selectedUser = null;
+  }
+
+  async sendChatMessage(): Promise<void> {
+    const message = this.chatDraft.trim();
+
+    if (!message || this.sendingChatMessage) {
+      return;
+    }
+
+    if (message.startsWith('/')) {
+      this.sendingChatMessage = true;
+
+      try {
+        await this.runSlashCommand(message);
+      } finally {
+        this.sendingChatMessage = false;
+      }
+
+      return;
+    }
+
+    this.sendingChatMessage = true;
+
+    try {
+      const sent = await this.runModerationAction(
+        this.localRuntimeClient.sendChatMessage(message),
+        'Message sent.',
+        'Failed to send chat message.',
+      );
+
+      if (sent) {
+        this.chatDraft = '';
+      }
+    } finally {
+      this.sendingChatMessage = false;
+    }
+  }
+
+  private async runSlashCommand(commandText: string): Promise<void> {
+    const [command = '', login, ...argumentsList] = commandText
+      .slice(1)
+      .trim()
+      .split(/\s+/);
+    const normalizedCommand = command.toLowerCase();
+
+    if (normalizedCommand === 'help') {
+      this.showActionFeedback(
+        'Commands: /ban <user> [reason], /unban <user>, /timeout <user> <seconds> [reason], /untimeout <user>.',
+        true,
+      );
+      this.chatDraft = '';
+      return;
+    }
+
+    if (normalizedCommand === 'unban' || normalizedCommand === 'untimeout') {
+      if (!login || argumentsList.length > 0) {
+        this.showActionFeedback(`Usage: /${normalizedCommand} <user>`, false);
+        return;
+      }
+
+      const actionName =
+        normalizedCommand === 'untimeout' ? 'Removed timeout from' : 'Unbanned';
+      const succeeded = await this.runModerationAction(
+        this.localRuntimeClient
+          .getUserIdByLogin(login)
+          .then((userId) => this.localRuntimeClient.unbanUser(userId)),
+        `${actionName} ${login}.`,
+        `Failed to remove timeout or ban from ${login}.`,
+      );
+
+      if (succeeded) {
+        this.chatDraft = '';
+      }
+
+      return;
+    }
+
+    if (normalizedCommand === 'ban') {
+      if (!login) {
+        this.showActionFeedback('Usage: /ban <user> [reason]', false);
+        return;
+      }
+
+      const reason = argumentsList.join(' ');
+      const succeeded = await this.runModerationAction(
+        this.localRuntimeClient
+          .getUserIdByLogin(login)
+          .then((userId) =>
+            this.localRuntimeClient.banUser(userId, reason || undefined),
+          ),
+        `Banned ${login}.`,
+        `Failed to ban ${login}.`,
+      );
+
+      if (succeeded) {
+        this.chatDraft = '';
+      }
+
+      return;
+    }
+
+    if (normalizedCommand === 'timeout') {
+      const durationSeconds = Number(argumentsList[0]);
+
+      if (
+        !login ||
+        !Number.isInteger(durationSeconds) ||
+        durationSeconds < 1 ||
+        durationSeconds > 1209600
+      ) {
+        this.showActionFeedback(
+          'Usage: /timeout <user> <seconds> [reason]',
+          false,
+        );
+        return;
+      }
+
+      const reason = argumentsList.slice(1).join(' ');
+      const succeeded = await this.runModerationAction(
+        this.localRuntimeClient
+          .getUserIdByLogin(login)
+          .then((userId) =>
+            this.localRuntimeClient.timeoutUser(
+              userId,
+              durationSeconds,
+              reason || undefined,
+            ),
+          ),
+        `Timed out ${login} for ${durationSeconds} seconds.`,
+        `Failed to time out ${login}.`,
+      );
+
+      if (succeeded) {
+        this.chatDraft = '';
+      }
+
+      return;
+    }
+
+    this.showActionFeedback(
+      `Unknown command /${normalizedCommand}. Use /help for supported commands.`,
+      false,
+    );
   }
 
   async timeoutUser(duration: number): Promise<void> {
@@ -138,10 +287,13 @@ export class MonitorComponent {
       succeeded = false;
     }
 
-    this.moderationFeedback = {
-      message: succeeded ? successMessage : failureMessage,
-      success: succeeded,
-    };
+    this.showActionFeedback(succeeded ? successMessage : failureMessage, succeeded);
+
+    return succeeded;
+  }
+
+  private showActionFeedback(message: string, success: boolean): void {
+    this.moderationFeedback = { message, success };
 
     if (this.feedbackTimeout !== null) {
       clearTimeout(this.feedbackTimeout);
@@ -151,8 +303,6 @@ export class MonitorComponent {
       this.moderationFeedback = null;
       this.feedbackTimeout = null;
     }, 3000);
-
-    return succeeded;
   }
 
   constructor(

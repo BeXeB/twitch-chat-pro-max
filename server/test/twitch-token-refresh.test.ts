@@ -148,11 +148,14 @@ test('sends chat through the companion Helix client', async () => {
 
     assert.ok(state);
     await twitchAuth.completeAuthorization('authorization-code', state);
-    await twitchApi.sendChatMessage({
-      broadcasterId: 'broadcaster-id',
-      message: 'Hello from the companion',
-      senderId: 'sender-id',
-    });
+    assert.equal(
+      await twitchApi.sendChatMessage({
+        broadcasterId: 'broadcaster-id',
+        message: 'Hello from the companion',
+        senderId: 'sender-id',
+      }),
+      'sent-message',
+    );
 
     assert.deepEqual(requests, [
       {
@@ -226,6 +229,52 @@ test('times out a user through the companion Helix client', async () => {
         path: '/helix/moderation/bans?broadcaster_id=broadcaster-id&moderator_id=moderator-id',
       },
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('resolves a Twitch login to its user ID through Helix', async () => {
+  const store = new MemoryRefreshTokenStore();
+  const twitchAuth = new TwitchAuthService(config, store);
+  const twitchApi = new TwitchApiClient(config, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  let resolvedUrl = '';
+
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: [],
+        token_type: 'bearer',
+      });
+    }
+
+    resolvedUrl = url;
+    return jsonResponse({
+      data: [
+        {
+          display_name: 'Target User',
+          id: 'target-user-id',
+          login: 'target_user',
+          profile_image_url: 'https://example.test/target.png',
+        },
+      ],
+    });
+  }) as typeof fetch;
+
+  try {
+    const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+    const state = authorizationUrl.searchParams.get('state');
+
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+    assert.equal(await twitchApi.getUserIdByLogin('target_user'), 'target-user-id');
+    assert.equal(resolvedUrl, 'https://api.example.test/helix/users?login=target_user');
   } finally {
     globalThis.fetch = originalFetch;
   }

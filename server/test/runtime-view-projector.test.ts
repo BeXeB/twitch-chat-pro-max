@@ -24,6 +24,39 @@ test('projects automation alerts into the bounded shared alert feed', () => {
   ]);
 });
 
+test('projects confirmed outgoing chat and de-duplicates its EventSub echo', () => {
+  const projector = new RuntimeViewProjector();
+
+  projector.addChatMessage({
+    color: null,
+    displayName: 'Broadcaster',
+    id: 'message-1',
+    message: 'Hello chat',
+    timestamp: '2026-09-27T00:00:00.000Z',
+    userId: 'broadcaster-id',
+    username: 'broadcaster',
+  });
+
+  const state = projector.project({
+    id: 'chat-event',
+    occurredAt: '2026-09-27T00:00:01.000Z',
+    payload: {
+      color: '#00FF00',
+      message: { text: 'Hello chat' },
+      message_id: 'message-1',
+      chatter_user_id: 'broadcaster-id',
+      chatter_user_login: 'broadcaster',
+      chatter_user_name: 'Broadcaster',
+    },
+    source: 'twitch',
+    type: 'twitch.channel.chat.message',
+  });
+
+  assert.equal(state.chatMessages.length, 1);
+  assert.equal(state.chatMessages[0]?.id, 'message-1');
+  assert.equal(state.chatMessages[0]?.color, '#00FF00');
+});
+
 test('projects moderator deletions into shared chat state', () => {
   const projector = new RuntimeViewProjector();
 

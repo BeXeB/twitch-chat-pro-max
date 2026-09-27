@@ -9,11 +9,6 @@
         <span>OFFLINE</span>
       }
     </div>
-    <nav class="layout-links" aria-label="Layouts">
-      <a class="selected" routerLink="/monitor">Monitor</a>
-      <a routerLink="/dashboard">Dashboard</a>
-      <a routerLink="/overlay" target="_blank" rel="noreferrer">Overlay</a>
-    </nav>
   </header>
 
   @if (moderationFeedback; as feedback) {
@@ -135,6 +130,14 @@
             :
             <span [innerHTML]="message.message | linkify"></span>
           </div>
+        } @empty {
+          <div class="chat-empty" role="status">
+            @if (runtimeStatus()?.connectionState === 'connected') {
+              No messages yet.
+            } @else {
+              Waiting for Twitch chat connection.
+            }
+          </div>
         }
         @if (selectedUser) {
           <div
@@ -159,6 +162,24 @@
           </div>
         }
       </div>
+      <form class="chat-composer" (ngSubmit)="sendChatMessage()">
+        <input
+          type="text"
+          name="chatDraft"
+          aria-label="Chat message or command"
+          autocomplete="off"
+          maxlength="500"
+          placeholder="Message chat or enter /help"
+          [(ngModel)]="chatDraft"
+          [disabled]="sendingChatMessage"
+        />
+        <button
+          type="submit"
+          [disabled]="sendingChatMessage || !chatDraft.trim()"
+        >
+          {{ sendingChatMessage ? "Sending" : "Send" }}
+        </button>
+      </form>
     </section>
   </main>
 </div>

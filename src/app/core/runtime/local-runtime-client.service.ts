@@ -138,6 +138,15 @@ export class LocalRuntimeClient {
     return true;
   }
 
+  async getUserIdByLogin(login: string): Promise<string> {
+    const result = await firstValueFrom(
+      this.http.get<{ userId: string }>(
+        `/api/users/by-login/${encodeURIComponent(login)}`,
+      ),
+    );
+    return result.userId;
+  }
+
   async timeoutUser(
     userId: string,
     durationSeconds: number,

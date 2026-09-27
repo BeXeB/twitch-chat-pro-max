@@ -178,6 +178,20 @@ export class TwitchApiClient {
     };
   }
 
+  async getUserIdByLogin(login: string): Promise<string> {
+    const parameters = new URLSearchParams({ login });
+    const response = await this.request<TwitchHelixUserResponse>(
+      `/users?${parameters}`,
+    );
+    const user = response.data[0];
+
+    if (!user) {
+      throw new TwitchApiError(`Twitch user "${login}" was not found.`, 404);
+    }
+
+    return user.id;
+  }
+
   async getCustomRewards({
     broadcasterId,
   }: TwitchRewardListRequest): Promise<ChannelPointReward[]> {
@@ -385,7 +399,7 @@ export class TwitchApiClient {
     broadcasterId,
     message,
     senderId,
-  }: TwitchChatMessageRequest): Promise<void> {
+  }: TwitchChatMessageRequest): Promise<string> {
     const response = await this.request<TwitchChatMessageResponse>(
       '/chat/messages',
       {
@@ -412,6 +426,8 @@ export class TwitchApiClient {
         200,
       );
     }
+
+    return result.message_id;
   }
 
   async sendShoutout({

@@ -69,6 +69,18 @@ export class RuntimeViewProjector {
     return this.getState();
   }
 
+  addChatMessage(message: RuntimeChatMessage): RuntimeViewState {
+    const chatMessages = this.state.chatMessages.filter(
+      (existingMessage) => existingMessage.id !== message.id,
+    );
+    this.state = {
+      ...this.state,
+      chatMessages: [...chatMessages, message].slice(-maxChatMessages),
+    };
+
+    return this.getState();
+  }
+
   private appendAlert(alert: RuntimeAlert): void {
     this.state = {
       ...this.state,
@@ -175,12 +187,7 @@ export class RuntimeViewProjector {
       timestamp: event.occurredAt,
       color: readOptionalString(payload, 'color'),
     };
-    this.state = {
-      ...this.state,
-      chatMessages: [...this.state.chatMessages, chatMessage].slice(
-        -maxChatMessages,
-      ),
-    };
+    this.addChatMessage(chatMessage);
   }
 
   private projectFollow(event: ApplicationEvent): void {
