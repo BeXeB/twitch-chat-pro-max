@@ -10,6 +10,8 @@ const twitchScopes = [
   'channel:read:subscriptions',
   'channel:manage:polls',
   'channel:manage:predictions',
+  'channel:read:hype_train',
+  'channel:manage:vips',
   'bits:read',
   'moderator:read:followers',
   'moderator:read:chatters',
@@ -34,6 +36,7 @@ export interface TwitchOAuthConfig {
 
 export interface RuntimeConfig {
   dataDirectory: string;
+  discordStreamWebhookUrl: string | null;
   twitchOAuth: TwitchOAuthConfig | null;
 }
 
@@ -42,11 +45,13 @@ export function loadRuntimeConfig(
 ): RuntimeConfig {
   const clientId = environment['TWITCH_CLIENT_ID'];
   const clientSecret = environment['TWITCH_CLIENT_SECRET'];
+  const discordStreamWebhookUrl =
+    environment['DISCORD_STREAM_WEBHOOK_URL']?.trim() || null;
   const dataDirectory =
     environment['TWITCH_RUNTIME_DATA_DIR'] ?? join(process.cwd(), 'data');
 
   if (!clientId || !clientSecret) {
-    return { dataDirectory, twitchOAuth: null };
+    return { dataDirectory, discordStreamWebhookUrl, twitchOAuth: null };
   }
 
   const eventSubUrl =
@@ -57,6 +62,7 @@ export function loadRuntimeConfig(
 
   return {
     dataDirectory,
+    discordStreamWebhookUrl,
     twitchOAuth: {
       clientId,
       clientSecret,

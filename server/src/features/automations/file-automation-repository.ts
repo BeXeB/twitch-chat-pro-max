@@ -6,6 +6,7 @@ import {
   AutomationAction,
   AutomationCondition,
   AutomationDefinition,
+  AutomationSchedule,
 } from '../../../../shared/contracts/automation';
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import { AutomationRepository } from './automation-repository';
@@ -143,7 +144,16 @@ export function isAutomationDefinition(
     Array.isArray(value['actions']) &&
     value['actions'].every(isAutomationAction) &&
     hasValidActionOrder(value['actions']) &&
-    (value['cooldown'] === undefined || isCooldown(value['cooldown']))
+    (value['cooldown'] === undefined || isCooldown(value['cooldown'])) &&
+    (value['schedule'] === undefined || isAutomationSchedule(value['schedule']))
+  );
+}
+
+function isAutomationSchedule(value: unknown): value is AutomationSchedule {
+  return (
+    isRecord(value) &&
+    isIntegerInRange(value['intervalMs'], 1000, 2147483647) &&
+    typeof value['onlyWhileLive'] === 'boolean'
   );
 }
 
@@ -171,6 +181,31 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
 
   if (value['type'] === 'send-chat') {
     return isText(value['message'], 500);
+  }
+
+  if (value['type'] === 'send-discord-webhook') {
+    return (
+      isText(value['content'], 2000) &&
+      isOptionalText(value['username'], 80) &&
+      (value['allowedRoleId'] === undefined ||
+        (typeof value['allowedRoleId'] === 'string' &&
+          /^\d{17,20}$/.test(value['allowedRoleId'])))
+    );
+  }
+
+  if (value['type'] === 'add-channel-vip') {
+    return isRequiredText(value['targetUserId']);
+  }
+
+  if (value['type'] === 'add-leaderboard-points') {
+    return isRequiredText(value['userId']) && isRequiredText(value['points']);
+  }
+
+  if (value['type'] === 'increase-custom-reward-cost') {
+    return (
+      isRequiredText(value['rewardId']) &&
+      isIntegerInRange(value['amount'], 1, 1000000000)
+    );
   }
 
   if (value['type'] === 'timeout-user') {

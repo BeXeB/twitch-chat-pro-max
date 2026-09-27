@@ -16,7 +16,18 @@ export interface ConnectedTwitchContext {
 }
 
 export class TwitchOperationsService {
+  private readonly rewardCostUpdateTails = new Map<string, Promise<void>>();
+
   constructor(private readonly getContext: () => ConnectedTwitchContext) {}
+
+  async listAllCustomRewards(): Promise<ChannelPointReward[]> {
+    const { api, broadcaster } = this.getContext();
+
+    return api.getCustomRewards({
+      broadcasterId: broadcaster.id,
+      onlyManageableRewards: false,
+    });
+  }
 
   async banUser(userId: string, reason?: string): Promise<void> {
     const { api, broadcaster } = this.getContext();
@@ -27,6 +38,12 @@ export class TwitchOperationsService {
       reason,
       userId,
     });
+  }
+
+  async addChannelVip(userId: string): Promise<void> {
+    const { api, broadcaster } = this.getContext();
+
+    await api.addChannelVip({ broadcasterId: broadcaster.id, userId });
   }
 
   async createCustomReward(
@@ -99,6 +116,39 @@ export class TwitchOperationsService {
     return api.getUserIdByLogin(login);
   }
 
+  async increaseCustomRewardCost(
+    rewardId: string,
+    amount: number,
+  ): Promise<ChannelPointReward> {
+    const { api, broadcaster } = this.getContext();
+    const queueKey = `${broadcaster.id}:${rewardId}`;
+    const previousUpdate = this.rewardCostUpdateTails.get(queueKey);
+    let releaseUpdate!: () => void;
+    const updateTail = new Promise<void>((resolve) => {
+      releaseUpdate = resolve;
+    });
+
+    this.rewardCostUpdateTails.set(queueKey, updateTail);
+    await previousUpdate;
+
+    try {
+      const reward = await api.getCustomReward(broadcaster.id, rewardId);
+      const cost = reward.cost + amount;
+
+      if (cost > 1000000000) {
+        throw new Error('The updated channel point reward cost is too high.');
+      }
+
+      return await api.updateCustomReward(broadcaster.id, rewardId, { cost });
+    } finally {
+      releaseUpdate();
+
+      if (this.rewardCostUpdateTails.get(queueKey) === updateTail) {
+        this.rewardCostUpdateTails.delete(queueKey);
+      }
+    }
+  }
+
   async resolvePrediction(
     predictionId: string,
     status: 'CANCELED' | 'LOCKED' | 'RESOLVED',
@@ -135,11 +185,18 @@ export class TwitchOperationsService {
   }
 
   async timeoutUser(
-    userId: string,
+    target: string,
     durationSeconds: number,
     reason?: string,
   ): Promise<void> {
     const { api, broadcaster } = this.getContext();
+    const normalizedTarget = target
+      .trim()
+      .replace(/^[@\s]+|[@\s]+$/g, '')
+      .trim();
+    const userId = /^\d+$/.test(normalizedTarget)
+      ? normalizedTarget
+      : await api.getUserIdByLogin(normalizedTarget);
 
     await api.timeoutUser({
       broadcasterId: broadcaster.id,

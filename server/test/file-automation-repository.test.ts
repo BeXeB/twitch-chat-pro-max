@@ -62,8 +62,99 @@ test('rejects invalid action configuration', () => {
       },
     ],
   };
+  const validVipAutomation: AutomationDefinition = {
+    ...automation,
+    actions: [
+      { targetUserId: '{{event.payload.user_id}}', type: 'add-channel-vip' },
+      {
+        amount: 8000,
+        rewardId: '{{event.payload.reward.id}}',
+        type: 'increase-custom-reward-cost',
+      },
+    ],
+  };
+  const validWasteRedemption: AutomationDefinition = {
+    ...automation,
+    actions: [
+      {
+        points: '{{event.payload.reward.cost}}',
+        type: 'add-leaderboard-points',
+        userId: '{{event.payload.user_id}}',
+      },
+      {
+        amount: 1,
+        rewardId: '{{event.payload.reward.id}}',
+        type: 'increase-custom-reward-cost',
+      },
+    ],
+    conditions: {
+      path: 'reward.id',
+      type: 'event-field-equals',
+      value: '2df00252-acb6-49e1-8e65-03830732dd6f',
+    },
+  };
+  const invalidRewardCost: AutomationDefinition = {
+    ...automation,
+    actions: [
+      {
+        amount: 0,
+        rewardId: '{{event.payload.reward.id}}',
+        type: 'increase-custom-reward-cost',
+      },
+    ],
+  };
 
   assert.equal(isAutomationDefinition(emptyMessage), false);
   assert.equal(isAutomationDefinition(overlongMessage), false);
   assert.equal(isAutomationDefinition(invalidTimeout), false);
+  assert.equal(isAutomationDefinition(validVipAutomation), true);
+  assert.equal(isAutomationDefinition(validWasteRedemption), true);
+  assert.equal(isAutomationDefinition(invalidRewardCost), false);
+});
+
+test('accepts valid schedules and rejects invalid intervals', () => {
+  assert.equal(
+    isAutomationDefinition({
+      ...automation,
+      schedule: { intervalMs: 600000, onlyWhileLive: true },
+    }),
+    true,
+  );
+  assert.equal(
+    isAutomationDefinition({
+      ...automation,
+      schedule: { intervalMs: 0, onlyWhileLive: true },
+    }),
+    false,
+  );
+});
+
+test('validates Discord webhook message and role fields', () => {
+  assert.equal(
+    isAutomationDefinition({
+      ...automation,
+      actions: [
+        {
+          allowedRoleId: '1084227335819100170',
+          content: 'Live now!',
+          type: 'send-discord-webhook',
+          username: 'BeXe',
+        },
+      ],
+    }),
+    true,
+  );
+  assert.equal(
+    isAutomationDefinition({
+      ...automation,
+      actions: [
+        {
+          allowedRoleId: 'not-a-role-id',
+          content: 'Live now!',
+          type: 'send-discord-webhook',
+        },
+      ],
+    }),
+    false,
+  );
 });

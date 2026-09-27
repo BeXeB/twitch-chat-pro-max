@@ -9,6 +9,7 @@ export interface ChannelPointReward {
   isEnabled: boolean;
   isUserInputRequired: boolean;
   maxPerStream: number | null;
+  maxPerUserPerStream: number | null;
   prompt: string | null;
   title: string;
 }

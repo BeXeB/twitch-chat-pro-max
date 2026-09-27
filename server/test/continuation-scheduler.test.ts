@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { AutomationContinuation } from '../src/features/timers/automation-continuation';
+import {
+  AutomationContinuation,
+  ContinuationScheduleRequest,
+} from '../src/features/timers/automation-continuation';
 import { InMemoryContinuationRepository } from '../src/features/timers/continuation-repository';
 import {
   ContinuationScheduler,
@@ -36,6 +39,10 @@ test('resumes due idempotent continuations and marks unsafe restart work for rev
         eventType: 'automation.safe-resume',
         payload: {},
         type: 'emit-runtime-event',
+      },
+      {
+        settings: { followerMode: true, followerModeDurationMinutes: 0 },
+        type: 'update-chat-settings',
       },
     ],
     dueAt: '2026-09-26T23:59:00.000Z',
@@ -100,11 +107,11 @@ function continuation(
 function scheduleRequest(
   duplicatePolicy: 'allow' | 'replace' | 'skip',
   eventId: string,
-) {
+): ContinuationScheduleRequest {
   return {
     actions: [
       {
-        eventType: 'automation.after-delay',
+        eventType: 'automation.after-delay' as const,
         payload: {},
         type: 'emit-runtime-event' as const,
       },

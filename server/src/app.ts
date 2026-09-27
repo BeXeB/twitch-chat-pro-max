@@ -19,6 +19,7 @@ import {
   FileRewardMappingRepository,
   isRewardAutomationMapping,
 } from './features/rewards/file-reward-mapping-repository';
+import { FileLeaderboardRepository } from './features/leaderboard/file-leaderboard-repository';
 import { redemptionEventType } from '../../shared/contracts/rewards';
 import { ChatSettingsUpdate } from '../../shared/contracts/automation';
 import {
@@ -100,6 +101,9 @@ export function createApp(): FastifyInstance {
   const rewardMappingRepository = new FileRewardMappingRepository(
     `${config.dataDirectory}/reward-mappings.json`,
   );
+  const leaderboardRepository = new FileLeaderboardRepository(
+    `${config.dataDirectory}/waste-leaderboard.json`,
+  );
   const localRuntime = new LocalRuntimeService(
     twitchAuth,
     config.twitchOAuth,
@@ -107,6 +111,8 @@ export function createApp(): FastifyInstance {
     commandRepository,
     continuationRepository,
     rewardMappingRepository,
+    config.discordStreamWebhookUrl,
+    leaderboardRepository,
   );
 
   app.addHook('onReady', async () => {
@@ -226,6 +232,8 @@ export function createApp(): FastifyInstance {
   );
 
   app.get('/api/rewards', async () => localRuntime.listRewards());
+
+  app.get('/api/rewards/all', async () => localRuntime.listAllRewards());
 
   app.post('/api/rewards/sync', async () => localRuntime.syncRewards());
 

@@ -3,8 +3,8 @@
   "compilerOptions": {
     "outDir": "../dist/server",
     "rootDir": "..",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "Node16",
     "types": ["node"],
     "lib": ["ES2022"]
   },

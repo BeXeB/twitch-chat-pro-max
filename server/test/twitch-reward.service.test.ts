@@ -54,11 +54,21 @@ test('synchronizes and normalizes manageable channel-point rewards', async () =>
         {
           background_color: '#00ff00',
           cost: 1000,
-          global_cooldown: { is_enabled: true, seconds: 30 },
+          global_cooldown_setting: {
+            global_cooldown_seconds: 30,
+            is_enabled: true,
+          },
           id: 'reward-1',
           is_enabled: true,
           is_user_input_required: false,
-          max_per_stream: { is_enabled: false, max_per_stream: 0 },
+          max_per_stream_setting: {
+            is_enabled: false,
+            max_per_stream: 0,
+          },
+          max_per_user_per_stream_setting: {
+            is_enabled: false,
+            max_per_user_per_stream: 0,
+          },
           prompt: '',
           title: 'Highlight message',
         },
@@ -86,12 +96,21 @@ test('synchronizes and normalizes manageable channel-point rewards', async () =>
         isEnabled: true,
         isUserInputRequired: false,
         maxPerStream: null,
+        maxPerUserPerStream: null,
         prompt: null,
         title: 'Highlight message',
       },
     ]);
+    assert.deepEqual(
+      (await twitchApi.getCustomRewards({
+        broadcasterId: 'broadcaster-1',
+        onlyManageableRewards: false,
+      })).map((reward) => reward.title),
+      ['Highlight message'],
+    );
     assert.deepEqual(requests, [
       'https://api.example.test/helix/channel_points/custom_rewards?broadcaster_id=broadcaster-1&only_manageable_rewards=true',
+      'https://api.example.test/helix/channel_points/custom_rewards?broadcaster_id=broadcaster-1&only_manageable_rewards=false',
     ]);
   } finally {
     globalThis.fetch = originalFetch;

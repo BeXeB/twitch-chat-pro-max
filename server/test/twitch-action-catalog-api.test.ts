@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { RefreshTokenStore } from '../src/auth/refresh-token-store';
 import { TwitchAuthService } from '../src/auth/twitch-auth.service';
 import { TwitchOAuthConfig } from '../src/config/runtime-config';
+import { TwitchOperationsService } from '../src/features/twitch-operations/twitch-operations.service';
 import { TwitchApiClient } from '../src/twitch/twitch-api.client';
 
 class MemoryRefreshTokenStore implements RefreshTokenStore {
@@ -27,6 +28,78 @@ const config: TwitchOAuthConfig = {
   redirectUri: 'http://127.0.0.1:4300/api/auth/twitch/callback',
   scopes: [],
 };
+
+test('resolves an entered Twitch login before timing out its user', async () => {
+  const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
+  const twitchApi = new TwitchApiClient(config, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ body: unknown; method: string; url: string }> = [];
+
+  globalThis.fetch = (async (input, init) => {
+    const url = String(input);
+
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: [],
+        token_type: 'bearer',
+      });
+    }
+
+    requests.push({
+      body: init?.body ? JSON.parse(String(init.body)) : null,
+      method: init?.method ?? 'GET',
+      url,
+    });
+
+    return url === 'https://api.example.test/helix/users?login=target_user'
+      ? jsonResponse({ data: [{ id: 'target-user-id' }] })
+      : jsonResponse({ data: [] });
+  }) as typeof fetch;
+
+  try {
+    const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+    const state = authorizationUrl.searchParams.get('state');
+
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+
+    const operations = new TwitchOperationsService(() => ({
+      api: twitchApi,
+      broadcaster: {
+        displayName: 'Streamer',
+        id: 'broadcaster',
+        login: 'streamer',
+        profileImageUrl: 'https://example.test/avatar.png',
+      },
+    }));
+
+    await operations.timeoutUser(' @target_user @ ', 60, 'Streamer volt!');
+
+    assert.deepEqual(requests, [
+      {
+        body: null,
+        method: 'GET',
+        url: 'https://api.example.test/helix/users?login=target_user',
+      },
+      {
+        body: {
+          data: {
+            duration: 60,
+            reason: 'Streamer volt!',
+            user_id: 'target-user-id',
+          },
+        },
+        method: 'POST',
+        url: 'https://api.example.test/helix/moderation/bans?broadcaster_id=broadcaster&moderator_id=broadcaster',
+      },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test('sends the complete action catalog through typed Helix requests', async () => {
   const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
@@ -76,6 +149,10 @@ test('sends the complete action catalog through typed Helix requests', async () 
       moderatorId: 'moderator',
       reason: 'Rule violation',
       userId: 'user',
+    });
+    await twitchApi.addChannelVip({
+      broadcasterId: 'broadcaster',
+      userId: 'vip-user',
     });
     await twitchApi.unbanUser({
       broadcasterId: 'broadcaster',
@@ -141,6 +218,11 @@ test('sends the complete action catalog through typed Helix requests', async () 
       },
       {
         body: null,
+        method: 'POST',
+        url: 'https://api.example.test/helix/channels/vips?broadcaster_id=broadcaster&user_id=vip-user',
+      },
+      {
+        body: null,
         method: 'DELETE',
         url: 'https://api.example.test/helix/moderation/bans?broadcaster_id=broadcaster&moderator_id=moderator&user_id=user',
       },
@@ -200,6 +282,83 @@ test('sends the complete action catalog through typed Helix requests', async () 
         url: 'https://api.example.test/helix/predictions',
       },
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('increments a reward cost for every serialized redemption', async () => {
+  const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
+  const twitchApi = new TwitchApiClient(config, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ body: unknown; method: string; url: string }> = [];
+  let currentCost = 6400;
+
+  globalThis.fetch = (async (input, init) => {
+    const url = String(input);
+
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: [],
+        token_type: 'bearer',
+      });
+    }
+
+    const method = init?.method ?? 'GET';
+    const body = init?.body ? JSON.parse(String(init.body)) : null;
+    requests.push({ body, method, url });
+
+    if (method === 'PATCH') {
+      currentCost = (body as { cost: number }).cost;
+    }
+
+    return jsonResponse({
+      data: [{ ...rewardResponse('vip-reward'), cost: currentCost }],
+    });
+  }) as typeof fetch;
+
+  try {
+    const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+    const state = authorizationUrl.searchParams.get('state');
+
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+
+    const operations = new TwitchOperationsService(() => ({
+      api: twitchApi,
+      broadcaster: {
+        displayName: 'Streamer',
+        id: 'broadcaster',
+        login: 'streamer',
+        profileImageUrl: 'https://example.test/avatar.png',
+      },
+    }));
+
+    const updatedRewards = await Promise.all([
+      operations.increaseCustomRewardCost('vip-reward', 8000),
+      operations.increaseCustomRewardCost('vip-reward', 8000),
+    ]);
+
+    assert.deepEqual(updatedRewards.map((reward) => reward.cost), [14400, 22400]);
+    assert.deepEqual(
+      requests.map(({ body, method }) => [method, body]),
+      [
+        ['GET', null],
+        ['PATCH', { cost: 14400 }],
+        ['GET', null],
+        ['PATCH', { cost: 22400 }],
+      ],
+    );
+    assert.ok(
+      requests.every(
+        ({ url }) =>
+          url ===
+          'https://api.example.test/helix/channel_points/custom_rewards?broadcaster_id=broadcaster&id=vip-reward',
+      ),
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -333,12 +492,12 @@ function rewardResponse(id: string) {
   return {
     background_color: '#00ff00',
     cost: 1000,
-    global_cooldown: null,
+    global_cooldown_setting: null,
     id,
     is_enabled: true,
     is_user_input_required: false,
-    max_per_stream: null,
-    max_per_user_per_stream: null,
+    max_per_stream_setting: null,
+    max_per_user_per_stream_setting: null,
     prompt: '',
     title: 'Highlight message',
   };

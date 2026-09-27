@@ -30,4 +30,17 @@ test('derives the production EventSub subscriptions endpoint from Helix', () => 
     config.twitchOAuth?.eventSubSubscriptionsUrl,
     'https://api.twitch.tv/helix/eventsub/subscriptions',
   );
+  assert.ok(config.twitchOAuth?.scopes.includes('channel:manage:vips'));
+  assert.ok(config.twitchOAuth?.scopes.includes('channel:read:hype_train'));
+});
+
+test('loads an optional Discord webhook URL independently of Twitch credentials', () => {
+  const webhookUrl =
+    'https://discord.com/api/webhooks/123456789012345678/fake-token';
+  const config = loadRuntimeConfig({
+    DISCORD_STREAM_WEBHOOK_URL: webhookUrl,
+  });
+
+  assert.equal(config.discordStreamWebhookUrl, webhookUrl);
+  assert.equal(config.twitchOAuth, null);
 });

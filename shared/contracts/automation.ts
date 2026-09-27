@@ -9,26 +9,47 @@ export interface AutomationDefinition {
   enabled: boolean;
   id: string;
   name: string;
+  schedule?: AutomationSchedule;
   trigger: AutomationTrigger;
   version: 1;
 }
 
+export interface AutomationSchedule {
+  intervalMs: number;
+  onlyWhileLive: boolean;
+}
+
 export type AutomationAction =
+  | AddChannelVipAction
+  | AddLeaderboardPointsAction
   | BanUserAction
   | CreatePollAction
   | CreatePredictionAction
   | DelayAction
   | DeleteChatMessageAction
   | EmitRuntimeEventAction
+  | IncreaseCustomRewardCostAction
   | EndPollAction
   | ResolvePredictionAction
   | SendChatMessageAction
   | SendShoutoutAction
+  | SendDiscordWebhookAction
   | ShowAlertAction
   | TimeoutUserAction
   | UnbanUserAction
   | UpdateChatSettingsAction
   | UpdateRedemptionStatusAction;
+
+export interface AddChannelVipAction {
+  targetUserId: string;
+  type: 'add-channel-vip';
+}
+
+export interface AddLeaderboardPointsAction {
+  points: string;
+  type: 'add-leaderboard-points';
+  userId: string;
+}
 
 export interface BanUserAction {
   reason?: string;
@@ -67,9 +88,22 @@ export interface EmitRuntimeEventAction {
   type: 'emit-runtime-event';
 }
 
+export interface IncreaseCustomRewardCostAction {
+  amount: number;
+  rewardId: string;
+  type: 'increase-custom-reward-cost';
+}
+
 export interface SendChatMessageAction {
   message: string;
   type: 'send-chat';
+}
+
+export interface SendDiscordWebhookAction {
+  allowedRoleId?: string;
+  content: string;
+  type: 'send-discord-webhook';
+  username?: string;
 }
 
 export interface SendShoutoutAction {

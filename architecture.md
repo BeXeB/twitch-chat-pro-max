@@ -86,12 +86,13 @@ An automation is persisted as an `AutomationDefinition`.
 - A trigger matches an application event type.
 - Conditions can be `always`, compare an event payload field, or compose child conditions with `all`, `any`, and `not`.
 - An optional global cooldown reserves execution after conditions pass.
+- An optional interval schedule can run the same actions repeatedly. Schedules with `onlyWhileLive` enabled start only while Twitch reports the channel online; the runtime initializes this state from Helix and follows `stream.online`/`stream.offline` EventSub events.
 - Actions are registered by their `type`. New action classes are added to the action registry, not to a growing central switch statement.
 - Each action receives an immutable source event and an emit callback. Derived events carry causation and correlation information.
 
-`emit-runtime-event` proves the event flow by publishing a derived `automation.*` event. Twitch mutation actions now cover chat, bans, unbans, message deletion, chat settings, shoutouts, redemption status, polls, and predictions. String fields use explicit `{{event.payload.path}}` placeholders, and typed action validation rejects invalid Twitch limits before execution. Each successful operation emits an auditable derived event. `show-alert` additionally projects a custom alert into the shared alert feed. Derived events cannot trigger automations recursively.
+`emit-runtime-event` proves the event flow by publishing a derived `automation.*` event. Twitch mutation actions now cover chat, bans, unbans, message deletion, chat settings, shoutouts, redemption status, polls, and predictions. String fields use explicit `{{event.payload.path}}` placeholders, and typed action validation rejects invalid Twitch limits before execution. Each successful operation emits an auditable derived event. `show-alert` additionally projects a custom alert into the shared alert feed. `send-discord-webhook` uses the local-only `DISCORD_STREAM_WEBHOOK_URL` and allow-lists role mentions. Derived events cannot trigger automations recursively.
 
-`delay` is a continuation boundary, not a blocking sleep. When reached, the engine atomically persists the source event and only the actions still to run, then stops the current execution. The scheduler supports `allow`, `replace`, and `skip` duplicate policies and exposes local list/cancel operations. On restart, continuations containing only idempotent local work resume at or after their due time. A continuation with a Twitch mutation is marked `requires-review` and emits an operational event instead of being replayed blindly.
+`delay` is a one-shot continuation boundary, not a blocking sleep or recurring schedule. When reached, the engine atomically persists the source event and only the actions still to run, then stops the current execution. The scheduler supports `allow`, `replace`, and `skip` duplicate policies and exposes local list/cancel operations. On restart, continuations containing idempotent local work, including explicit chat-setting updates, resume at or after their due time. Other Twitch mutations are marked `requires-review` and emit an operational event instead of being replayed blindly.
 
 ## Channel Points
 
@@ -110,6 +111,8 @@ The Angular `LocalRuntimeClient` provides typed methods for chat messages/settin
 ### Credentials
 
 The refresh token is encrypted with Windows DPAPI and stored under the ignored local data directory. It can be decrypted only by the current Windows user. The client secret exists only in the companion environment configuration.
+
+The Discord webhook URL is also a secret and is read from the ignored local `.env` file as `DISCORD_STREAM_WEBHOOK_URL`.
 
 ### Configuration
 

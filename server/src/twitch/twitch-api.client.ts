@@ -38,6 +38,11 @@ export interface TwitchUserTimeoutRequest {
   userId: string;
 }
 
+export interface TwitchChannelVipRequest {
+  broadcasterId: string;
+  userId: string;
+}
+
 export interface TwitchBanUserRequest {
   broadcasterId: string;
   moderatorId: string;
@@ -99,6 +104,7 @@ export interface TwitchResolvePredictionRequest {
 
 export interface TwitchRewardListRequest {
   broadcasterId: string;
+  onlyManageableRewards?: boolean;
 }
 
 interface TwitchChatMessageResponse {
@@ -117,12 +123,18 @@ interface TwitchRewardListResponse {
   data: Array<{
     background_color: string | null;
     cost: number;
-    global_cooldown: { is_enabled: boolean; seconds: number } | null;
+    global_cooldown_setting: {
+      global_cooldown_seconds: number;
+      is_enabled: boolean;
+    } | null;
     id: string;
     is_enabled: boolean;
     is_user_input_required: boolean;
-    max_per_stream: { is_enabled: boolean; max_per_stream: number } | null;
-    max_per_user_per_stream: {
+    max_per_stream_setting: {
+      is_enabled: boolean;
+      max_per_stream: number;
+    } | null;
+    max_per_user_per_stream_setting: {
       is_enabled: boolean;
       max_per_user_per_stream: number;
     } | null;
@@ -194,16 +206,32 @@ export class TwitchApiClient {
 
   async getCustomRewards({
     broadcasterId,
+    onlyManageableRewards = true,
   }: TwitchRewardListRequest): Promise<ChannelPointReward[]> {
     const parameters = new URLSearchParams({
       broadcaster_id: broadcasterId,
-      only_manageable_rewards: 'true',
+      only_manageable_rewards: String(onlyManageableRewards),
     });
     const response = await this.request<TwitchRewardListResponse>(
       `/channel_points/custom_rewards?${parameters}`,
     );
 
     return response.data.map(normalizeReward);
+  }
+
+  async getCustomReward(
+    broadcasterId: string,
+    rewardId: string,
+  ): Promise<ChannelPointReward> {
+    const parameters = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      id: rewardId,
+    });
+    const response = await this.request<TwitchRewardListResponse>(
+      `/channel_points/custom_rewards?${parameters}`,
+    );
+
+    return readRewardResponse(response);
   }
 
   async createCustomReward(
@@ -323,6 +351,17 @@ export class TwitchApiClient {
         method: 'POST',
       },
     );
+  }
+
+  async addChannelVip({ broadcasterId, userId }: TwitchChannelVipRequest): Promise<void> {
+    const parameters = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      user_id: userId,
+    });
+
+    await this.request<undefined>(`/channels/vips?${parameters}`, {
+      method: 'POST',
+    });
   }
 
   async createPoll({
@@ -727,15 +766,19 @@ function normalizeReward(
     backgroundColor: reward.background_color,
     cost: reward.cost,
     globalCooldownSeconds:
-      reward.global_cooldown?.is_enabled
-        ? reward.global_cooldown.seconds
+      reward.global_cooldown_setting?.is_enabled
+        ? reward.global_cooldown_setting.global_cooldown_seconds
         : null,
     id: reward.id,
     isEnabled: reward.is_enabled,
     isUserInputRequired: reward.is_user_input_required,
     maxPerStream:
-      reward.max_per_stream?.is_enabled
-        ? reward.max_per_stream.max_per_stream
+      reward.max_per_stream_setting?.is_enabled
+        ? reward.max_per_stream_setting.max_per_stream
+        : null,
+    maxPerUserPerStream:
+      reward.max_per_user_per_stream_setting?.is_enabled
+        ? reward.max_per_user_per_stream_setting.max_per_user_per_stream
         : null,
     prompt: reward.prompt || null,
     title: reward.title,

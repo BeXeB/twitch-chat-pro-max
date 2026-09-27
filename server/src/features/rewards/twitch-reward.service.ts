@@ -15,4 +15,17 @@ export class TwitchRewardService {
     this.rewards = await this.loadRewards();
     return this.list();
   }
+
+  update(reward: ChannelPointReward): void {
+    const index = this.rewards.findIndex((cachedReward) => cachedReward.id === reward.id);
+
+    if (index === -1) {
+      this.rewards = [...this.rewards, reward];
+      return;
+    }
+
+    this.rewards = this.rewards.map((cachedReward) =>
+      cachedReward.id === reward.id ? reward : cachedReward,
+    );
+  }
 }

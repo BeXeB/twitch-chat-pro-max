@@ -175,7 +175,10 @@ export class ContinuationScheduler implements AutomationContinuationScheduler {
 
 function isRestartSafe(actions: AutomationAction[]): boolean {
   return actions.every(
-    (action) => action.type === 'delay' || action.type === 'emit-runtime-event',
+    (action) =>
+      action.type === 'delay' ||
+      action.type === 'emit-runtime-event' ||
+      action.type === 'update-chat-settings',
   );
 }
 

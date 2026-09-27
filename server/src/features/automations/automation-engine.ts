@@ -190,6 +190,34 @@ export class AutomationEngine {
     return results;
   }
 
+  async handleScheduledAutomation(
+    automationId: string,
+    emit: (event: ApplicationEvent) => void,
+  ): Promise<AutomationExecutionResult | null> {
+    const definition = (await this.repository.listEnabled()).find(
+      (automation) =>
+        automation.id === automationId && automation.schedule !== undefined,
+    );
+
+    if (!definition) {
+      return null;
+    }
+
+    const results = await this.handleEvent(
+      {
+        id: randomUUID(),
+        occurredAt: new Date(this.now()).toISOString(),
+        payload: { automationId, scheduled: true },
+        source: 'manual',
+        targetAutomationId: automationId,
+        type: definition.trigger.eventType,
+      },
+      emit,
+    );
+
+    return results[0] ?? null;
+  }
+
   async resumeContinuation(
     continuation: AutomationContinuation,
     emit: (event: ApplicationEvent) => void,

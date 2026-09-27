@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  AddChannelVipAction,
+  AddLeaderboardPointsAction,
   BanUserAction,
   CreatePollAction,
   CreatePredictionAction,
   DeleteChatMessageAction,
   EndPollAction,
+  IncreaseCustomRewardCostAction,
   ResolvePredictionAction,
   SendShoutoutAction,
   ShowAlertAction,
@@ -20,6 +23,90 @@ import {
   AutomationActionHandler,
 } from './automation-engine';
 import { renderEventPayloadTemplate } from './automation-template';
+
+export class AddChannelVipActionHandler implements AutomationActionHandler {
+  readonly type = 'add-channel-vip' as const;
+
+  constructor(private readonly addChannelVip: (userId: string) => Promise<void>) {}
+
+  async execute(
+    action: AddChannelVipAction,
+    context: AutomationActionContext,
+  ): Promise<AutomationActionExecutionStatus> {
+    const userId = renderRequired(
+      action.targetUserId,
+      context.event,
+      'VIP target user ID',
+    );
+
+    await this.addChannelVip(userId);
+    emitActionEvent(context, 'automation.channel-vip-added', { userId });
+    return 'continue';
+  }
+}
+
+export class AddLeaderboardPointsActionHandler
+  implements AutomationActionHandler
+{
+  readonly type = 'add-leaderboard-points' as const;
+
+  constructor(
+    private readonly addPoints: (userId: string, points: number) => Promise<number>,
+  ) {}
+
+  async execute(
+    action: AddLeaderboardPointsAction,
+    context: AutomationActionContext,
+  ): Promise<AutomationActionExecutionStatus> {
+    const userId = renderRequired(action.userId, context.event, 'leaderboard user ID');
+    const pointsText = renderRequired(
+      action.points,
+      context.event,
+      'leaderboard points',
+    );
+    const points = Number(pointsText);
+
+    if (!Number.isSafeInteger(points) || points < 1) {
+      throw new Error('The rendered leaderboard points must be a positive integer.');
+    }
+
+    const totalPoints = await this.addPoints(userId, points);
+    emitActionEvent(context, 'automation.leaderboard-points-added', {
+      points,
+      totalPoints,
+      userId,
+    });
+    return 'continue';
+  }
+}
+
+export class IncreaseCustomRewardCostActionHandler
+  implements AutomationActionHandler
+{
+  readonly type = 'increase-custom-reward-cost' as const;
+
+  constructor(
+    private readonly increaseCustomRewardCost: (
+      rewardId: string,
+      amount: number,
+    ) => Promise<number>,
+  ) {}
+
+  async execute(
+    action: IncreaseCustomRewardCostAction,
+    context: AutomationActionContext,
+  ): Promise<AutomationActionExecutionStatus> {
+    const rewardId = renderRequired(action.rewardId, context.event, 'reward ID');
+    const newCost = await this.increaseCustomRewardCost(rewardId, action.amount);
+
+    emitActionEvent(context, 'automation.custom-reward-cost-increased', {
+      amount: action.amount,
+      newCost,
+      rewardId,
+    });
+    return 'continue';
+  }
+}
 
 export class BanUserActionHandler implements AutomationActionHandler {
   readonly type = 'ban-user' as const;

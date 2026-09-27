@@ -76,6 +76,7 @@ export class TwitchAuthService {
     const parameters = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
+      force_verify: 'true',
       response_type: 'code',
       scope: this.config.scopes.join(' '),
       state,

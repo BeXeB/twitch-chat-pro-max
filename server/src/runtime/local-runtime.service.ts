@@ -22,6 +22,8 @@ import {
 import { TwitchApiClient, TwitchCurrentUser } from '../twitch/twitch-api.client';
 import { ApplicationEventDispatcher } from './application-event-dispatcher';
 import { RuntimeViewProjector } from './runtime-view-projector';
+import { DiscordWebhookClient } from '../features/discord/discord-webhook.client';
+import { SendDiscordWebhookActionHandler } from '../features/automations/discord-webhook-action-handler';
 import {
   AlwaysConditionHandler,
   AutomationActionRegistry,
@@ -35,11 +37,14 @@ import {
 } from '../features/automations/automation-engine';
 import { AutomationRepository } from '../features/automations/automation-repository';
 import {
+  AddChannelVipActionHandler,
+  AddLeaderboardPointsActionHandler,
   BanUserActionHandler,
   CreatePollActionHandler,
   CreatePredictionActionHandler,
   DeleteChatMessageActionHandler,
   EndPollActionHandler,
+  IncreaseCustomRewardCostActionHandler,
   ResolvePredictionActionHandler,
   SendShoutoutActionHandler,
   ShowAlertActionHandler,
@@ -53,9 +58,14 @@ import { TwitchOperationsService } from '../features/twitch-operations/twitch-op
 import { RedemptionAutomationRouter } from '../features/rewards/redemption-automation-router';
 import { RewardMappingRepository } from '../features/rewards/reward-mapping-repository';
 import { TwitchRewardService } from '../features/rewards/twitch-reward.service';
+import {
+  InMemoryLeaderboardRepository,
+  LeaderboardRepository,
+} from '../features/leaderboard/leaderboard-repository';
 import { AutomationContinuation } from '../features/timers/automation-continuation';
 import { ContinuationRepository } from '../features/timers/continuation-repository';
 import { ContinuationScheduler } from '../features/timers/continuation-scheduler';
+import { RecurringAutomationScheduler } from '../features/timers/recurring-automation-scheduler';
 
 export class LocalRuntimeService {
   private readonly applicationEvents = new ApplicationEventDispatcher();
@@ -65,6 +75,10 @@ export class LocalRuntimeService {
   private readonly commandService: CommandService;
 
   private readonly continuations: ContinuationScheduler;
+
+  private readonly discordWebhookClient: DiscordWebhookClient;
+
+  private readonly recurringAutomations: RecurringAutomationScheduler;
 
   private readonly redemptionRouter: RedemptionAutomationRouter;
 
@@ -94,8 +108,11 @@ export class LocalRuntimeService {
     commandRepository: CommandRepository,
     continuationRepository: ContinuationRepository,
     private readonly rewardMappings: RewardMappingRepository,
+    discordStreamWebhookUrl: string | null = null,
+    leaderboard: LeaderboardRepository = new InMemoryLeaderboardRepository(),
   ) {
     this.continuations = new ContinuationScheduler(continuationRepository);
+    this.discordWebhookClient = new DiscordWebhookClient(discordStreamWebhookUrl);
     this.operations = new TwitchOperationsService(() =>
       this.getConnectedTwitchClient(),
     );
@@ -106,6 +123,12 @@ export class LocalRuntimeService {
         new EventFieldEqualsConditionHandler(),
       ]),
       new AutomationActionRegistry([
+        new AddChannelVipActionHandler((userId) =>
+          this.operations.addChannelVip(userId),
+        ),
+        new AddLeaderboardPointsActionHandler((userId, points) =>
+          leaderboard.addPoints(userId, points),
+        ),
         new BanUserActionHandler((userId, reason) =>
           this.operations.banUser(userId, reason),
         ),
@@ -123,6 +146,14 @@ export class LocalRuntimeService {
         new EndPollActionHandler((pollId, status) =>
           this.operations.endPoll(pollId, status),
         ),
+        new IncreaseCustomRewardCostActionHandler(async (rewardId, amount) => {
+          const reward = await this.operations.increaseCustomRewardCost(
+            rewardId,
+            amount,
+          );
+          this.rewards.update(reward);
+          return reward.cost;
+        }),
         new ResolvePredictionActionHandler(
           (predictionId, status, winningOutcomeId) =>
             this.operations.resolvePrediction(
@@ -134,6 +165,9 @@ export class LocalRuntimeService {
         new SendChatMessageActionHandler(async (message) => {
           await this.operations.sendChatMessage(message);
         }),
+        new SendDiscordWebhookActionHandler((message) =>
+          this.discordWebhookClient.send(message),
+        ),
         new SendShoutoutActionHandler((targetBroadcasterId) =>
           this.operations.sendShoutout(targetBroadcasterId),
         ),
@@ -157,6 +191,15 @@ export class LocalRuntimeService {
       undefined,
       undefined,
       this.continuations,
+    );
+    this.recurringAutomations = new RecurringAutomationScheduler(
+      automationRepository,
+      async (automation) => {
+        await this.automationEngine.handleScheduledAutomation(
+          automation.id,
+          (event) => this.applicationEvents.dispatch(event),
+        );
+      },
     );
     this.redemptionRouter = new RedemptionAutomationRouter(
       rewardMappings,
@@ -225,6 +268,14 @@ export class LocalRuntimeService {
     try {
       this.updateConnectionState('connecting');
       this.broadcaster = await this.api.getCurrentUser();
+      try {
+        const streamInfo = await this.operations.getStreamInfo();
+        await this.recurringAutomations.setStreamOnline(streamInfo !== null);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown stream status error.';
+        console.error('Unable to read Twitch stream status:', message);
+      }
       await this.rewards.sync();
       this.publishSnapshot();
       await this.eventSub.start({
@@ -253,6 +304,7 @@ export class LocalRuntimeService {
         this.applicationEvents.dispatch(this.createContinuationReviewEvent(continuation, reason));
       },
     );
+    await this.recurringAutomations.start();
   }
 
   async listContinuations(): Promise<AutomationContinuation[]> {
@@ -269,6 +321,10 @@ export class LocalRuntimeService {
 
   async syncRewards(): Promise<ChannelPointReward[]> {
     return this.rewards.sync();
+  }
+
+  async listAllRewards(): Promise<ChannelPointReward[]> {
+    return this.operations.listAllCustomRewards();
   }
 
   async sendChatMessage(message: string): Promise<void> {
@@ -413,6 +469,12 @@ export class LocalRuntimeService {
   }
 
   private handleNotification(notification: EventSubNotification): void {
+    if (notification.type === 'stream.online') {
+      this.updateStreamOnline(true);
+    } else if (notification.type === 'stream.offline') {
+      this.updateStreamOnline(false);
+    }
+
     this.applicationEvents.dispatch({
       id: notification.id,
       occurredAt: notification.occurredAt,
@@ -503,6 +565,14 @@ export class LocalRuntimeService {
 
   private publishSnapshot(): void {
     this.publish({ kind: 'snapshot', snapshot: this.getSnapshot() });
+  }
+
+  private updateStreamOnline(isOnline: boolean): void {
+    void this.recurringAutomations.setStreamOnline(isOnline).catch((error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : 'Unknown stream schedule error.';
+      console.error('Unable to update scheduled automations:', message);
+    });
   }
 
   private updateConnectionState(

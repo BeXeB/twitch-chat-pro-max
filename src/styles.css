@@ -32,6 +32,11 @@ body {
   color: var(--white);
 }
 
+.monitor .chat-message a {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 body:has(.overlay-page) {
   background-color: transparent;
 }

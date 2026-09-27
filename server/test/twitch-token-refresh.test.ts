@@ -32,6 +32,14 @@ const config: TwitchOAuthConfig = {
   scopes: [],
 };
 
+test('forces Twitch consent when starting OAuth authorization', () => {
+  const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
+  const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+
+  assert.equal(authorizationUrl.searchParams.get('force_verify'), 'true');
+  assert.equal(authorizationUrl.searchParams.get('scope'), '');
+});
+
 test('retries one Helix 401 with a refreshed backend token', async () => {
   const store = new MemoryRefreshTokenStore();
   const twitchAuth = new TwitchAuthService(config, store);
