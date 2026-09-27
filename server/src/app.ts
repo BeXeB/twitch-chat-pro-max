@@ -20,6 +20,9 @@ import {
   isRewardAutomationMapping,
 } from './features/rewards/file-reward-mapping-repository';
 import { FileLeaderboardRepository } from './features/leaderboard/file-leaderboard-repository';
+import { FileInventoryRepository } from './features/inventory/file-inventory-repository';
+import { FileLootboxCatalogRepository } from './features/lootboxes/file-lootbox-catalog-repository';
+import { LootboxService } from './features/lootboxes/lootbox-service';
 import { redemptionEventType } from '../../shared/contracts/rewards';
 import { ChatSettingsUpdate } from '../../shared/contracts/automation';
 import {
@@ -97,6 +100,13 @@ export function createApp(): FastifyInstance {
   const leaderboardRepository = new FileLeaderboardRepository(
     `${config.dataDirectory}/waste-leaderboard.json`,
   );
+  const inventoryRepository = new FileInventoryRepository(
+    `${config.dataDirectory}/inventories.json`,
+  );
+  const lootboxCatalogRepository = new FileLootboxCatalogRepository(
+    `${config.dataDirectory}/lootbox-catalog.json`,
+  );
+  const lootboxService = new LootboxService(lootboxCatalogRepository, inventoryRepository);
   const localRuntime = new LocalRuntimeService(
     twitchAuth,
     config.twitchOAuth,
@@ -104,6 +114,7 @@ export function createApp(): FastifyInstance {
     commandRepository,
     continuationRepository,
     rewardMappingRepository,
+    lootboxService,
     config.discordStreamWebhookUrl,
     leaderboardRepository,
   );

@@ -193,6 +193,13 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
     return isRequiredText(value['rewardId']) && isIntegerInRange(value['amount'], 1, 1000000000);
   }
 
+  if (value['type'] === 'open-lootbox') {
+    return (
+      typeof value['lootboxId'] === 'string' &&
+      /^[a-z0-9][a-z0-9_-]{0,63}$/.test(value['lootboxId'])
+    );
+  }
+
   if (value['type'] === 'timeout-user') {
     return (
       isRequiredText(value['targetUserId']) &&

@@ -103,12 +103,22 @@ test('rejects invalid action configuration', () => {
       },
     ],
   };
+  const validLootboxOpening: AutomationDefinition = {
+    ...automation,
+    actions: [{ lootboxId: 'adventurer-cache', type: 'open-lootbox' }],
+  };
+  const invalidLootboxId: AutomationDefinition = {
+    ...automation,
+    actions: [{ lootboxId: 'Adventurer Cache', type: 'open-lootbox' }],
+  };
 
   assert.equal(isAutomationDefinition(emptyMessage), false);
   assert.equal(isAutomationDefinition(overlongMessage), false);
   assert.equal(isAutomationDefinition(invalidTimeout), false);
   assert.equal(isAutomationDefinition(validVipAutomation), true);
   assert.equal(isAutomationDefinition(validWasteRedemption), true);
+  assert.equal(isAutomationDefinition(validLootboxOpening), true);
+  assert.equal(isAutomationDefinition(invalidLootboxId), false);
   assert.equal(isAutomationDefinition(invalidRewardCost), false);
 });
 

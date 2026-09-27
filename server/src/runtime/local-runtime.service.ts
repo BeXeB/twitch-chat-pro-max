@@ -21,6 +21,7 @@ import { ApplicationEventDispatcher } from './application-event-dispatcher';
 import { RuntimeViewProjector } from './runtime-view-projector';
 import { DiscordWebhookClient } from '../features/discord/discord-webhook.client';
 import { SendDiscordWebhookActionHandler } from '../features/automations/discord-webhook-action-handler';
+import { OpenLootboxActionHandler } from '../features/automations/lootbox-action-handler';
 import {
   AlwaysConditionHandler,
   AutomationActionRegistry,
@@ -55,6 +56,7 @@ import { TwitchOperationsService } from '../features/twitch-operations/twitch-op
 import { RedemptionAutomationRouter } from '../features/rewards/redemption-automation-router';
 import { RewardMappingRepository } from '../features/rewards/reward-mapping-repository';
 import { TwitchRewardService } from '../features/rewards/twitch-reward.service';
+import { LootboxService } from '../features/lootboxes/lootbox-service';
 import {
   InMemoryLeaderboardRepository,
   LeaderboardRepository,
@@ -104,6 +106,7 @@ export class LocalRuntimeService {
     commandRepository: CommandRepository,
     continuationRepository: ContinuationRepository,
     private readonly rewardMappings: RewardMappingRepository,
+    lootboxes: LootboxService,
     discordStreamWebhookUrl: string | null = null,
     leaderboard: LeaderboardRepository = new InMemoryLeaderboardRepository(),
   ) {
@@ -139,6 +142,7 @@ export class LocalRuntimeService {
           this.rewards.update(reward);
           return reward.cost;
         }),
+        new OpenLootboxActionHandler(lootboxes, (message) => this.sendChatMessage(message)),
         new ResolvePredictionActionHandler((predictionId, status, winningOutcomeId) =>
           this.operations.resolvePrediction(predictionId, status, winningOutcomeId),
         ),

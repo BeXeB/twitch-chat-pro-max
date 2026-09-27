@@ -29,6 +29,7 @@ export type AutomationAction =
   | DeleteChatMessageAction
   | EmitRuntimeEventAction
   | IncreaseCustomRewardCostAction
+  | OpenLootboxAction
   | EndPollAction
   | ResolvePredictionAction
   | SendChatMessageAction
@@ -43,6 +44,11 @@ export type AutomationAction =
 export interface AddChannelVipAction {
   targetUserId: string;
   type: 'add-channel-vip';
+}
+
+export interface OpenLootboxAction {
+  lootboxId: string;
+  type: 'open-lootbox';
 }
 
 export interface AddLeaderboardPointsAction {

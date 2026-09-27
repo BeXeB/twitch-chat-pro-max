@@ -16,6 +16,33 @@ When EventSub delivers `twitch.channel.channel_points_custom_reward_redemption.a
 
 Thus the first redemption awards 515 leaderboard points and raises the next cost to 516. The next awards 516 and raises the price to 517. The `!leaderboard` command is separate; this automation only records totals.
 
+## Lootbox Redemptions
+
+The companion seeds `data/lootbox-catalog.json` with a `Chat Style Cache` (`adventurer-cache`) the first time it is opened. Its weighted cosmetic drops are Ember Text (message color, 40), Mint Signature (username color, 25), Gilded Edge (border color, 20), Starlight Frame (special border style, 10), and Slide Entry (message entry effect, 5). Edit this local version-1 catalog to change cosmetics and weights; an existing catalog is never replaced. Opening a box adds the cosmetic to `data/inventories.json`, stacking duplicate item IDs. Equipped cosmetic slots are persisted for later `!equip` support. The current overlay does not apply them yet; that is a separate follow-up.
+
+To connect a Channel Point reward, add an automation like this to the version-1 `data/automations.json` document, replacing the reward ID with the ID of a synchronized reward:
+
+```json
+{
+  "actions": [{ "lootboxId": "adventurer-cache", "type": "open-lootbox" }],
+  "conditions": {
+    "path": "reward.id",
+    "type": "event-field-equals",
+    "value": "YOUR_TWITCH_REWARD_ID"
+  },
+  "enabled": true,
+  "id": "open-adventurer-cache",
+  "name": "Open adventurer cache",
+  "trigger": {
+    "eventType": "twitch.channel.channel_points_custom_reward_redemption.add",
+    "type": "application-event"
+  },
+  "version": 1
+}
+```
+
+Then map that Twitch reward to `open-adventurer-cache` through the existing reward-mapping flow and choose `auto-fulfill`. The action posts `@viewer opened Chat Style Cache and found Ember Text.` (with the actual viewer and cosmetic) in public chat. A failed chat send leaves the redemption pending for review; retrying the same redemption reuses the recorded drop. Restart the companion after editing local JSON. `!inventory`, `!equip`, and overlay rendering are not included in this phase.
+
 ## Add Another Reward
 
 1. Create the reward through the app (`POST /api/rewards`) or its reward-management UI, and save the returned ID. For example:
