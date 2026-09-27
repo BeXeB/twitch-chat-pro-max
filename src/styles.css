@@ -40,6 +40,38 @@ body:has(.overlay-page) {
   background-color: transparent;
 }
 
+body:has(.overlay-page.overlay-black-preview) {
+  background-color: var(--black);
+}
+
+.alert-follow {
+  border-color: var(--alert-follow);
+}
+
+.alert-subscription {
+  border-color: var(--alert-subscription);
+}
+
+.alert-gift-subscription {
+  border-color: var(--alert-gift-subscription);
+}
+
+.alert-bits {
+  border-color: var(--alert-bits);
+}
+
+.alert-raid {
+  border-color: var(--alert-raid);
+}
+
+.alert-redemption {
+  border-color: var(--alert-redemption);
+}
+
+.alert-automation {
+  border-color: var(--blue);
+}
+
 * {
   scrollbar-width: auto;
   scrollbar-color: var(--gray) var(--black);

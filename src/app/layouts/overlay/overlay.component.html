@@ -1,4 +1,8 @@
-<main class="overlay-page" aria-label="Twitch stream overlay">
+<main
+  class="overlay-page"
+  [class.overlay-black-preview]="blackPreview"
+  aria-label="Twitch stream overlay"
+>
   @if (alerts().length > 0) {
     <section class="overlay-alerts" aria-label="Recent stream alerts">
       @for (alert of alerts(); track alert.id) {
@@ -17,14 +21,6 @@
       <p class="overlay-message">
         <strong [style.color]="message.color ?? null">{{ message.displayName }}</strong>
         <span>{{ message.message }}</span>
-      </p>
-    } @empty {
-      <p class="overlay-empty">
-        {{
-          runtime.status()?.connectionState === 'connected'
-            ? 'Chat is quiet'
-            : 'Waiting for stream connection'
-        }}
       </p>
     }
   </section>

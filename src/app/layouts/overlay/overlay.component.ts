@@ -10,7 +10,9 @@ import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.serv
   styleUrls: ['./overlay.component.css'],
 })
 export class OverlayComponent {
-  readonly messages = computed(() => [...this.runtime.viewState().chatMessages].slice(-14));
+  readonly blackPreview = new URLSearchParams(window.location.search).get('preview') === 'black';
+
+  readonly messages = computed(() => [...this.runtime.viewState().chatMessages].slice(-20));
 
   readonly alerts = computed(() => [...this.runtime.viewState().alerts].slice(-5).reverse());
 
