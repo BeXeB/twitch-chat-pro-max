@@ -24,6 +24,10 @@ Angular reloads browser code as it changes. The companion runs directly under th
 - `/monitor` shows live chat and alerts and provides moderation controls.
 - `/overlay` is a transparent, read-only chat and alert view for OBS Browser Sources.
 
+## Automation configuration
+
+See the [event and JSON walkthrough](server/src/features/rewards/README.md) for adding EventSub automations, the accepted `data/automations.json` action fields and limits, reward mappings, and the lootbox catalog format. The dashboard can edit automations and mappings; restart the companion after editing their JSON files directly.
+
 ## Checks
 
 - `npm run build` builds Angular.

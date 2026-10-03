@@ -10,6 +10,19 @@ import {
   starterLootboxCatalog,
 } from '../src/features/lootboxes/lootbox-catalog-repository';
 
+test('loads the configured local catalog with item lists on lootboxes', async () => {
+  const repository = new FileLootboxCatalogRepository(
+    join(process.cwd(), 'data/lootbox-catalog.json'),
+  );
+  const catalog = await repository.getCatalog();
+
+  assert.equal(isLootboxCatalogDocument(catalog), true);
+  assert.equal(
+    catalog.items.some((item) => 'itemIds' in item),
+    false,
+  );
+});
+
 test('seeds a starter catalog only when the local file is missing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'twitch-runtime-lootboxes-'));
   const filePath = join(directory, 'lootbox-catalog.json');
@@ -44,4 +57,40 @@ test('validates cosmetic values for message colors, borders, and entry effects',
   const invalidSlot = structuredClone(starterLootboxCatalog);
   Reflect.set(invalidSlot.items[0].cosmetic, 'slot', 'weapon');
   assert.equal(isLootboxCatalogDocument(invalidSlot), false);
+});
+
+test('validates rarity weights against the lootbox item pool', () => {
+  const invalidWeight = structuredClone(starterLootboxCatalog);
+  invalidWeight.lootboxes[0].rarityWeights.common = 0;
+  assert.equal(isLootboxCatalogDocument(invalidWeight), false);
+
+  const unavailableRarity = structuredClone(starterLootboxCatalog);
+  unavailableRarity.items.pop();
+  assert.equal(isLootboxCatalogDocument(unavailableRarity), false);
+
+  const unknownRarity = structuredClone(starterLootboxCatalog);
+  Reflect.set(unknownRarity.lootboxes[0].rarityWeights, 'mythic', 1);
+  assert.equal(isLootboxCatalogDocument(unknownRarity), false);
+
+  const unknownItem = structuredClone(starterLootboxCatalog);
+  unknownItem.lootboxes[0].itemIds.push('missing-item');
+  assert.equal(isLootboxCatalogDocument(unknownItem), false);
+
+  const duplicateItem = structuredClone(starterLootboxCatalog);
+  duplicateItem.lootboxes[0].itemIds.push('ember-text');
+  assert.equal(isLootboxCatalogDocument(duplicateItem), false);
+
+  const missingWeight = structuredClone(starterLootboxCatalog);
+  delete missingWeight.lootboxes[0].rarityWeights.common;
+  assert.equal(isLootboxCatalogDocument(missingWeight), false);
+
+  const emptyRarity = structuredClone(starterLootboxCatalog);
+  emptyRarity.lootboxes[0].itemIds.pop();
+  assert.equal(isLootboxCatalogDocument(emptyRarity), false);
+
+  for (const weight of [-1, 0.5, NaN, Infinity, 1_000_000_000, Number.MAX_SAFE_INTEGER]) {
+    const invalidTotal = structuredClone(starterLootboxCatalog);
+    invalidTotal.lootboxes[0].rarityWeights.common = weight;
+    assert.equal(isLootboxCatalogDocument(invalidTotal), false);
+  }
 });

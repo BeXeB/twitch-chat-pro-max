@@ -105,7 +105,7 @@ test('rejects invalid action configuration', () => {
   };
   const validLootboxOpening: AutomationDefinition = {
     ...automation,
-    actions: [{ lootboxId: 'adventurer-cache', type: 'open-lootbox' }],
+    actions: [{ lootboxId: 'common-lootbox', type: 'open-lootbox' }],
   };
   const invalidLootboxId: AutomationDefinition = {
     ...automation,

@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { InMemoryInventoryRepository } from '../src/features/inventory/inventory-repository';
-import { InMemoryLootboxCatalogRepository } from '../src/features/lootboxes/lootbox-catalog-repository';
+import {
+  InMemoryLootboxCatalogRepository,
+  starterLootboxCatalog,
+} from '../src/features/lootboxes/lootbox-catalog-repository';
 import { LootboxService } from '../src/features/lootboxes/lootbox-service';
 
-test('selects the item at each weighted drop boundary', async () => {
+test('selects the item at each rarity-weight boundary', async () => {
   const cases = [
     [0, 'ember-text'],
     [39, 'ember-text'],
@@ -20,20 +23,88 @@ test('selects the item at each weighted drop boundary', async () => {
   ] as const;
 
   for (const [selectedIndex, expectedItemId] of cases) {
+    let rollNumber = 0;
     const service = new LootboxService(
       new InMemoryLootboxCatalogRepository(),
       new InMemoryInventoryRepository(),
-      () => selectedIndex,
+      () => (rollNumber++ === 0 ? selectedIndex : 0),
     );
 
     const opening = await service.open({
-      boxId: 'adventurer-cache',
+      boxId: 'common-lootbox',
       redemptionId: `redemption-${selectedIndex}`,
       userId: '12345',
     });
 
     assert.equal(opening.itemId, expectedItemId);
   }
+});
+
+test('selects uniformly among items of the rolled rarity', async () => {
+  const catalog = structuredClone(starterLootboxCatalog);
+  catalog.items.push({
+    cosmetic: { slot: 'message-color', value: '#FF0000' },
+    id: 'rose-text',
+    name: 'Rose Text',
+    rarity: 'common',
+  });
+  catalog.lootboxes[0].itemIds.push('rose-text');
+
+  for (const [selectedItemIndex, expectedItemId] of [
+    [0, 'ember-text'],
+    [1, 'rose-text'],
+  ] as const) {
+    let rollNumber = 0;
+    const selectedIndexes = [0, selectedItemIndex] as const;
+    const rollMaximums: number[] = [];
+    const service = new LootboxService(
+      new InMemoryLootboxCatalogRepository(catalog),
+      new InMemoryInventoryRepository(),
+      (exclusiveMaximum) => {
+        rollMaximums.push(exclusiveMaximum);
+        return selectedIndexes[rollNumber++] ?? 0;
+      },
+    );
+
+    const opening = await service.open({
+      boxId: 'common-lootbox',
+      redemptionId: `common-${selectedItemIndex}`,
+      userId: '12345',
+    });
+
+    assert.equal(opening.itemId, expectedItemId);
+    assert.equal(rollNumber, 2);
+    assert.deepEqual(rollMaximums, [100, 2]);
+  }
+});
+
+test('limits selectable items to the lootbox item list', async () => {
+  const catalog = structuredClone(starterLootboxCatalog);
+  catalog.items.push({
+    cosmetic: { slot: 'message-color', value: '#FF0000' },
+    id: 'rose-text',
+    name: 'Rose Text',
+    rarity: 'common',
+  });
+  catalog.lootboxes.push({
+    id: 'rose-cache',
+    itemIds: ['rose-text'],
+    name: 'Rose Cache',
+    rarityWeights: { common: 1 },
+  });
+  const service = new LootboxService(
+    new InMemoryLootboxCatalogRepository(catalog),
+    new InMemoryInventoryRepository(),
+    () => 0,
+  );
+
+  const opening = await service.open({
+    boxId: 'rose-cache',
+    redemptionId: 'rose-redemption',
+    userId: '12345',
+  });
+
+  assert.equal(opening.itemId, 'rose-text');
 });
 
 test('returns the original result for a repeated redemption without another roll or grant', async () => {
@@ -49,7 +120,7 @@ test('returns the original result for a repeated redemption without another roll
     () => new Date('2026-09-27T00:00:00.000Z'),
   );
   const request = {
-    boxId: 'adventurer-cache',
+    boxId: 'common-lootbox',
     redemptionId: 'redemption-1',
     userId: '12345',
   };
@@ -58,7 +129,7 @@ test('returns the original result for a repeated redemption without another roll
   const repeatedOpening = await service.open(request);
 
   assert.deepEqual(repeatedOpening, firstOpening);
-  assert.equal(rolls, 1);
+  assert.equal(rolls, 2);
   assert.deepEqual(await inventory.getByUserId('12345'), {
     equippedCosmetics: {},
     items: [{ itemId: 'ember-text', quantity: 1 }],
@@ -71,7 +142,7 @@ test('resolves equipped catalog items into per-user cosmetic values', async () =
   await inventory.awardOpening({
     acquiredAt: '2026-09-27T00:00:00.000Z',
     announced: true,
-    boxId: 'adventurer-cache',
+    boxId: 'common-lootbox',
     boxName: 'Chat Style Cache',
     itemId: 'ember-text',
     itemName: 'Ember Text',
@@ -97,7 +168,7 @@ test('rejects unknown lootboxes and invalid user IDs', async () => {
     /Unknown lootbox/,
   );
   await assert.rejects(
-    service.open({ boxId: 'adventurer-cache', redemptionId: 'redemption-1', userId: 'viewer' }),
+    service.open({ boxId: 'common-lootbox', redemptionId: 'redemption-1', userId: 'viewer' }),
     /user ID is invalid/,
   );
 });

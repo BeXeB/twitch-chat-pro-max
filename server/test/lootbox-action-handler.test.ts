@@ -101,11 +101,11 @@ function createRouter(
   ) => Promise<void>,
 ): RedemptionAutomationRouter {
   const automation: AutomationDefinition = {
-    actions: [{ lootboxId: 'adventurer-cache', type: 'open-lootbox' }],
+    actions: [{ lootboxId: 'common-lootbox', type: 'open-lootbox' }],
     conditions: { type: 'always' },
     enabled: true,
-    id: 'open-adventurer-cache',
-    name: 'Open adventurer cache',
+    id: 'open-common-lootbox',
+    name: 'Common Lootbox',
     trigger: { eventType: redemptionEventType, type: 'application-event' },
     version: 1,
   };

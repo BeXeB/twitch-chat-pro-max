@@ -6,6 +6,7 @@ import {
   CosmeticSlot,
   LootboxDefinition,
   LootboxItemDefinition,
+  LootboxRarity,
 } from '../../../../shared/contracts/lootboxes';
 import {
   InventoryRepository,
@@ -104,26 +105,49 @@ function selectDrop(
   itemById: Map<string, LootboxItemDefinition>,
   chooseIndex: (exclusiveMaximum: number) => number,
 ): LootboxItemDefinition {
-  const totalWeight = lootbox.drops.reduce((total, drop) => total + drop.weight, 0);
-  const selectedIndex = chooseIndex(totalWeight);
+  const rarityWeights = Object.entries(lootbox.rarityWeights) as [LootboxRarity, number][];
+  const totalWeight = rarityWeights.reduce((total, [, weight]) => total + weight, 0);
+  let remainingWeight = chooseIndex(totalWeight);
 
-  if (!Number.isInteger(selectedIndex) || selectedIndex < 0 || selectedIndex >= totalWeight) {
+  if (!Number.isInteger(remainingWeight) || remainingWeight < 0 || remainingWeight >= totalWeight) {
     throw new Error('The lootbox random roll is invalid.');
   }
 
-  let remainingWeight = selectedIndex;
-  for (const drop of lootbox.drops) {
-    remainingWeight -= drop.weight;
+  let selectedRarity: LootboxRarity | undefined;
+  for (const [rarity, weight] of rarityWeights) {
+    remainingWeight -= weight;
     if (remainingWeight < 0) {
-      const item = itemById.get(drop.itemId);
-      if (!item) {
-        throw new Error(`The lootbox references an unknown item: ${drop.itemId}.`);
-      }
-      return item;
+      selectedRarity = rarity;
+      break;
     }
   }
 
-  throw new Error('The lootbox has no selectable drops.');
+  if (!selectedRarity) {
+    throw new Error('The lootbox has no selectable rarities.');
+  }
+
+  const rarityItems: LootboxItemDefinition[] = [];
+  for (const itemId of lootbox.itemIds) {
+    const item = itemById.get(itemId);
+    if (item?.rarity === selectedRarity) {
+      rarityItems.push(item);
+    }
+  }
+  const selectedItemIndex = chooseIndex(rarityItems.length);
+  if (
+    !Number.isInteger(selectedItemIndex) ||
+    selectedItemIndex < 0 ||
+    selectedItemIndex >= rarityItems.length
+  ) {
+    throw new Error('The lootbox random roll is invalid.');
+  }
+
+  const selectedItem = rarityItems[selectedItemIndex];
+  if (!selectedItem) {
+    throw new Error('The lootbox has no selectable items.');
+  }
+
+  return selectedItem;
 }
 
 function isText(value: unknown): value is string {

@@ -13,7 +13,8 @@ export type ChatEntryEffect = (typeof CHAT_ENTRY_EFFECTS)[number];
 
 export type ChatCosmeticsByUserId = Record<string, Partial<Record<CosmeticSlot, string>>>;
 
-export type LootboxRarity = 'common' | 'epic' | 'legendary' | 'rare' | 'uncommon';
+export const LOOTBOX_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
+export type LootboxRarity = (typeof LOOTBOX_RARITIES)[number];
 
 export type LootboxCosmetic = {
   [Slot in CosmeticSlot]: { slot: Slot; value: CosmeticValueBySlot[Slot] };
@@ -34,15 +35,11 @@ export interface LootboxItemDefinition {
   rarity: LootboxRarity;
 }
 
-export interface LootboxDrop {
-  itemId: string;
-  weight: number;
-}
-
 export interface LootboxDefinition {
-  drops: LootboxDrop[];
   id: string;
+  itemIds: string[];
   name: string;
+  rarityWeights: Partial<Record<LootboxRarity, number>>;
 }
 
 export interface LootboxCatalogDocument {

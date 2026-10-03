@@ -1,6 +1,7 @@
 import {
   isChatBorderStyle,
   isChatEntryEffect,
+  LOOTBOX_RARITIES,
   LootboxCatalogDocument,
   LootboxCosmetic,
   LootboxItemDefinition,
@@ -58,15 +59,16 @@ export const starterLootboxCatalog: LootboxCatalogDocument = {
   ],
   lootboxes: [
     {
-      drops: [
-        { itemId: 'ember-text', weight: 40 },
-        { itemId: 'mint-signature', weight: 25 },
-        { itemId: 'gilded-edge', weight: 20 },
-        { itemId: 'starlight-frame', weight: 10 },
-        { itemId: 'slide-entry', weight: 5 },
-      ],
-      id: 'adventurer-cache',
+      id: 'common-lootbox',
+      itemIds: ['ember-text', 'mint-signature', 'gilded-edge', 'starlight-frame', 'slide-entry'],
       name: 'Chat Style Cache',
+      rarityWeights: {
+        common: 40,
+        uncommon: 25,
+        rare: 20,
+        epic: 10,
+        legendary: 5,
+      },
     },
   ],
   version: 1,
@@ -84,13 +86,13 @@ export function isLootboxCatalogDocument(value: unknown): value is LootboxCatalo
     return false;
   }
 
-  const itemIds = new Set<string>();
+  const itemById = new Map<string, LootboxItemDefinition>();
   if (
     !value['items'].every((item: unknown) => {
-      if (!isLootboxItem(item) || itemIds.has(item.id)) {
+      if (!isLootboxItem(item) || itemById.has(item.id)) {
         return false;
       }
-      itemIds.add(item.id);
+      itemById.set(item.id, item);
       return true;
     })
   ) {
@@ -104,31 +106,13 @@ export function isLootboxCatalogDocument(value: unknown): value is LootboxCatalo
       !isId(lootbox['id']) ||
       !isDisplayName(lootbox['name']) ||
       lootboxIds.has(lootbox['id']) ||
-      !Array.isArray(lootbox['drops']) ||
-      lootbox['drops'].length === 0
+      !isLootboxSelection(lootbox['itemIds'], lootbox['rarityWeights'], itemById)
     ) {
       return false;
     }
 
     lootboxIds.add(lootbox['id']);
-    const dropIds = new Set<string>();
-    let totalWeight = 0;
-
-    return lootbox['drops'].every((drop: unknown) => {
-      if (
-        !isRecord(drop) ||
-        !isId(drop['itemId']) ||
-        !itemIds.has(drop['itemId']) ||
-        dropIds.has(drop['itemId']) ||
-        !isPositiveWeight(drop['weight'])
-      ) {
-        return false;
-      }
-
-      dropIds.add(drop['itemId']);
-      totalWeight += drop['weight'];
-      return totalWeight <= MAX_TOTAL_WEIGHT;
-    });
+    return true;
   });
 }
 
@@ -162,13 +146,53 @@ function isLootboxCosmetic(value: unknown): value is LootboxCosmetic {
 }
 
 function isRarity(value: unknown): value is LootboxRarity {
-  return (
-    value === 'common' ||
-    value === 'uncommon' ||
-    value === 'rare' ||
-    value === 'epic' ||
-    value === 'legendary'
-  );
+  return typeof value === 'string' && LOOTBOX_RARITIES.some((rarity) => rarity === value);
+}
+
+function isLootboxSelection(
+  itemIds: unknown,
+  rarityWeights: unknown,
+  itemById: ReadonlyMap<string, LootboxItemDefinition>,
+): boolean {
+  if (
+    !Array.isArray(itemIds) ||
+    itemIds.length === 0 ||
+    !isRecord(rarityWeights) ||
+    Object.keys(rarityWeights).length === 0
+  ) {
+    return false;
+  }
+
+  const selectedItemIds = new Set<string>();
+  const selectedRarities = new Set<LootboxRarity>();
+  for (const itemId of itemIds) {
+    if (!isId(itemId) || selectedItemIds.has(itemId)) {
+      return false;
+    }
+
+    const item = itemById.get(itemId);
+    if (!item) {
+      return false;
+    }
+
+    selectedItemIds.add(itemId);
+    selectedRarities.add(item.rarity);
+  }
+
+  let totalWeight = 0;
+  for (const [rarity, weight] of Object.entries(rarityWeights)) {
+    if (!isRarity(rarity) || !selectedRarities.has(rarity) || !isPositiveWeight(weight)) {
+      return false;
+    }
+
+    selectedRarities.delete(rarity);
+    totalWeight += weight;
+    if (totalWeight > MAX_TOTAL_WEIGHT) {
+      return false;
+    }
+  }
+
+  return selectedRarities.size === 0;
 }
 
 function isPositiveWeight(value: unknown): value is number {

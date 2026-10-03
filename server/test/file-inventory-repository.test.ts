@@ -73,7 +73,7 @@ function createOpening(): InventoryOpeningRecord {
   return {
     acquiredAt: '2026-09-27T00:00:00.000Z',
     announced: false,
-    boxId: 'adventurer-cache',
+    boxId: 'common-lootbox',
     boxName: 'Chat Style Cache',
     itemId: 'ember-text',
     itemName: 'Ember Text',
