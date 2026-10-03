@@ -32,7 +32,9 @@ test('announces and fulfills a lootbox redemption once, including on redelivery'
   await router.handle(redemptionEvent, () => undefined);
   await router.handle(redemptionEvent, () => undefined);
 
-  assert.deepEqual(announcements, ['@viewer opened Chat Style Cache and found Ember Text.']);
+  assert.deepEqual(announcements, [
+    '@viewer kinyitott egy Chat Style Cache-t és kapott egy Parázsvörös Szöveg-t.',
+  ]);
   assert.deepEqual(statuses, ['FULFILLED', 'FULFILLED']);
   assert.deepEqual(await inventory.getByUserId('12345'), {
     equippedCosmetics: {},
@@ -69,7 +71,9 @@ test('retries a failed announcement with the persisted result without awarding t
   failAnnouncement = false;
   await router.handle(redemptionEvent, () => undefined);
 
-  assert.deepEqual(announcements, ['@viewer opened Chat Style Cache and found Ember Text.']);
+  assert.deepEqual(announcements, [
+    '@viewer kinyitott egy Chat Style Cache-t és kapott egy Parázsvörös Szöveg-t.',
+  ]);
   assert.deepEqual(statuses, ['FULFILLED']);
   assert.equal((await inventory.getOpening('redemption-1'))?.announced, true);
   assert.deepEqual((await inventory.getByUserId('12345'))?.items, [

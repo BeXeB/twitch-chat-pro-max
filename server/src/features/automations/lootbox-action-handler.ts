@@ -60,7 +60,7 @@ export class OpenLootboxActionHandler implements AutomationActionHandler {
 
     const announcement = Promise.resolve().then(async () => {
       await this.sendChatMessage(
-        `@${username} opened ${opening.boxName} and found ${opening.itemName}.`,
+        `@${username} kinyitott egy ${opening.boxName}-t és kapott egy ${opening.itemName}-t.`,
       );
       await this.lootboxes.markAnnounced(opening.redemptionId);
     });

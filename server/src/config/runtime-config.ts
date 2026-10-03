@@ -3,6 +3,7 @@ import { join } from 'node:path';
 const twitchScopes = [
   'user:read:chat',
   'user:write:chat',
+  'user:manage:whispers',
   'channel:bot',
   'channel:manage:broadcast',
   'channel:read:redemptions',

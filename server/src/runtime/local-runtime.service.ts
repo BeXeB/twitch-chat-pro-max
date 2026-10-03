@@ -23,6 +23,10 @@ import { DiscordWebhookClient } from '../features/discord/discord-webhook.client
 import { SendDiscordWebhookActionHandler } from '../features/automations/discord-webhook-action-handler';
 import { OpenLootboxActionHandler } from '../features/automations/lootbox-action-handler';
 import {
+  EquipInventoryActionHandler,
+  WhisperInventoryActionHandler,
+} from '../features/automations/inventory-action-handler';
+import {
   AlwaysConditionHandler,
   AutomationActionRegistry,
   AutomationConditionRegistry,
@@ -137,6 +141,7 @@ export class LocalRuntimeService {
           this.operations.deleteChatMessage(messageId),
         ),
         new EmitRuntimeEventActionHandler(),
+        new EquipInventoryActionHandler(this.lootboxes, (message) => this.sendChatMessage(message)),
         new EndPollActionHandler((pollId, status) => this.operations.endPoll(pollId, status)),
         new IncreaseCustomRewardCostActionHandler(async (rewardId, amount) => {
           const reward = await this.operations.increaseCustomRewardCost(rewardId, amount);
@@ -144,6 +149,10 @@ export class LocalRuntimeService {
           return reward.cost;
         }),
         new OpenLootboxActionHandler(this.lootboxes, (message) => this.sendChatMessage(message)),
+        new WhisperInventoryActionHandler(this.lootboxes, async (userId, message) => {
+          const { api, broadcaster } = this.getConnectedTwitchClient();
+          await api.sendWhisper({ senderId: broadcaster.id, recipientId: userId, message });
+        }),
         new ResolvePredictionActionHandler((predictionId, status, winningOutcomeId) =>
           this.operations.resolvePrediction(predictionId, status, winningOutcomeId),
         ),

@@ -21,6 +21,19 @@ export interface OpenLootboxRequest {
   userId: string;
 }
 
+export interface OwnedInventoryItem {
+  equipped: boolean;
+  itemId: string;
+  name: string;
+  quantity: number;
+  rarity: LootboxRarity | null;
+  slot: CosmeticSlot | null;
+}
+
+export type EquipInventoryResult =
+  | { status: 'equipped'; itemName: string }
+  | { status: 'not-owned' | 'ambiguous' | 'name-missing' };
+
 export class LootboxService {
   constructor(
     private readonly catalog: LootboxCatalogRepository,
@@ -67,6 +80,49 @@ export class LootboxService {
 
   async markAnnounced(redemptionId: string): Promise<void> {
     return this.inventory.markOpeningAnnounced(redemptionId);
+  }
+
+  async equipByName(userId: string, name: string): Promise<EquipInventoryResult> {
+    validateUserId(userId);
+    const normalizedName = normalizeItemName(name);
+    if (!normalizedName) {
+      return { status: 'name-missing' };
+    }
+    const items = (await this.getInventoryItems(userId)).filter(
+      (item) => item.slot !== null && normalizeItemName(item.name) === normalizedName,
+    );
+    if (items.length === 0) {
+      return { status: 'not-owned' };
+    }
+    if (items.length > 1) {
+      return { status: 'ambiguous' };
+    }
+    const item = items[0];
+    if (!item.slot) {
+      return { status: 'not-owned' };
+    }
+    await this.inventory.equip(userId, item.slot, item.itemId);
+    return { status: 'equipped', itemName: item.name };
+  }
+
+  async getInventoryItems(userId: string): Promise<OwnedInventoryItem[]> {
+    validateUserId(userId);
+    const [catalog, inventory] = await Promise.all([
+      this.catalog.getCatalog(),
+      this.inventory.getByUserId(userId),
+    ]);
+    const itemsById = new Map(catalog.items.map((item) => [item.id, item]));
+    return (inventory?.items ?? []).map((stack) => {
+      const item = itemsById.get(stack.itemId);
+      return {
+        equipped: !!item && inventory?.equippedCosmetics[item.cosmetic.slot] === item.id,
+        itemId: stack.itemId,
+        name: item?.name ?? stack.itemId,
+        quantity: stack.quantity,
+        rarity: item?.rarity ?? null,
+        slot: item?.cosmetic.slot ?? null,
+      };
+    });
   }
 
   async getEquippedCosmetics(): Promise<ChatCosmeticsByUserId> {
@@ -152,4 +208,8 @@ function selectDrop(
 
 function isText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function normalizeItemName(name: string): string {
+  return name.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('hu');
 }

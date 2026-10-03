@@ -1,3 +1,5 @@
+import { setTimeout as wait } from 'node:timers/promises';
+
 import { TwitchAuthService } from '../auth/twitch-auth.service';
 import { TwitchOAuthConfig } from '../config/runtime-config';
 import { ChatSettingsUpdate } from '../../../shared/contracts/automation';
@@ -169,6 +171,10 @@ export class TwitchApiError extends Error {
 }
 
 export class TwitchApiClient {
+  private whisperQueue: Promise<void> = Promise.resolve();
+
+  private nextWhisperAt = 0;
+
   constructor(
     private readonly config: TwitchOAuthConfig,
     private readonly twitchAuth: TwitchAuthService,
@@ -200,6 +206,36 @@ export class TwitchApiClient {
     }
 
     return user.id;
+  }
+
+  async sendWhisper(request: {
+    senderId: string;
+    recipientId: string;
+    message: string;
+  }): Promise<void> {
+    if (request.senderId === request.recipientId) {
+      throw new Error('Twitch does not allow whispering to your own account.');
+    }
+    if (!request.message.trim() || request.message.length > 500) {
+      throw new Error('Whispers must contain between 1 and 500 characters.');
+    }
+    const parameters = new URLSearchParams({
+      from_user_id: request.senderId,
+      to_user_id: request.recipientId,
+    });
+    const sending = this.whisperQueue.then(async () => {
+      const delayMs = this.nextWhisperAt - Date.now();
+      if (delayMs > 0) {
+        await wait(delayMs);
+      }
+      this.nextWhisperAt = Date.now() + 650;
+      await this.request<void>(`/whispers?${parameters}`, {
+        body: JSON.stringify({ message: request.message }),
+        method: 'POST',
+      });
+    });
+    this.whisperQueue = sending.catch(() => undefined);
+    await sending;
   }
 
   async getCustomRewards({

@@ -76,6 +76,7 @@ Each action is an object with a `type` and the fields below. All listed fields a
 | `show-alert`                  | `message`: text up to 500; optional `title`: text up to 100.                                                                                                                                                        |
 | `emit-runtime-event`          | `eventType`: string beginning `automation.`; `payload`: JSON object. Does not trigger another automation.                                                                                                           |
 | `open-lootbox`                | `lootboxId`: catalog box ID, lowercase letters/digits followed by up to 63 lowercase letters/digits/`_`/`-`. Only valid on a Channel Point redemption.                                                              |
+| `whisper-inventory`           | No fields. Only valid on `command.executed`; whispers the invoking viewer's inventory grouped by equipment slot.                                                                                                    |
 | `add-leaderboard-points`      | `userId`: text; `points`: text that renders to a positive safe integer (for example, `"{{event.payload.reward.cost}}"`).                                                                                            |
 | `add-channel-vip`             | `targetUserId`: text.                                                                                                                                                                                               |
 | `ban-user`                    | `targetUserId`: text; optional `reason`: text up to 500.                                                                                                                                                            |
@@ -152,7 +153,79 @@ To connect a Channel Point reward, add an automation like this to the version-1 
 }
 ```
 
-Then map that Twitch reward to `open-common-lootbox` through the existing reward-mapping flow and choose `auto-fulfill`. The action posts `@viewer opened Chat Style Cache and found Ember Text.` (with the actual viewer and cosmetic) in public chat. A failed chat send leaves the redemption pending for review; retrying the same redemption reuses the recorded drop. Restart the companion after editing local JSON. `!inventory` and `!equip` are not included in this phase.
+Then map that Twitch reward to `open-common-lootbox` through the existing reward-mapping flow and choose `auto-fulfill`. The action announces the viewer and cosmetic in public chat. A failed chat send leaves the redemption pending for review; retrying the same redemption reuses the recorded drop. Restart the companion after editing local JSON.
+
+### Equip Command
+
+`!equip [equipment name]` targets an automation with the `equip-inventory` action. Use the full item name shown by `!inventory`, without brackets or quotes. Matching ignores case and extra whitespace but preserves accents. Only the invoking viewer's owned catalog items can be equipped; the item replaces the current cosmetic in its slot without consuming it or changing other slots. Ambiguous names are rejected.
+
+Feedback is public, addressed to the viewer in Hungarian. `!equip` without a name shows usage guidance. Successful equips persist and emit `automation.inventory-equipped`, refreshing cosmetics in connected overlays. If the chat reply fails, the saved equipment remains in effect.
+
+Add this entry to the `commands` array in `data/commands.json`:
+
+```json
+{
+  "aliases": [],
+  "argumentPolicy": "optional",
+  "cooldown": { "durationMs": 5000, "scope": "user" },
+  "enabled": true,
+  "id": "command-equip",
+  "name": "equip",
+  "requiredRole": "everyone",
+  "targetAutomationId": "automation-equip",
+  "version": 1
+}
+```
+
+Add the matching entry to the `automations` array in `data/automations.json`, then restart the companion:
+
+```json
+{
+  "actions": [{ "type": "equip-inventory" }],
+  "conditions": { "type": "always" },
+  "enabled": true,
+  "id": "automation-equip",
+  "name": "Equip Inventory",
+  "trigger": { "eventType": "command.executed", "type": "application-event" },
+  "version": 1
+}
+```
+
+### Inventory Command
+
+`!inventory` uses a command targeting an automation with the `whisper-inventory` action. It whispers only to the command author. Responses are Hungarian, grouping owned cosmetics into Üzenetszín, Névszín, Szegélyszín, Szegélystílus, and Belépési effekt. Item names come from the catalog; starter names are Hungarian. Each entry includes its quantity and translated rarity; equipped items have a `[felszerelve]` marker. Empty slots show `nincs`, an empty inventory gets `Az inventoryd üres.`, and items removed from the catalog appear under Egyéb tárgyak by ID. Responses split into whispers of at most 500 characters with paced sends. Errors do not cause a public-chat fallback.
+
+Add this entry to the `commands` array in `data/commands.json`:
+
+```json
+{
+  "aliases": [],
+  "argumentPolicy": "none",
+  "cooldown": { "durationMs": 30000, "scope": "user" },
+  "enabled": true,
+  "id": "command-inventory",
+  "name": "inventory",
+  "requiredRole": "everyone",
+  "targetAutomationId": "automation-inventory",
+  "version": 1
+}
+```
+
+Add the matching entry to the `automations` array in `data/automations.json`:
+
+```json
+{
+  "actions": [{ "type": "whisper-inventory" }],
+  "conditions": { "type": "always" },
+  "enabled": true,
+  "id": "automation-inventory",
+  "name": "Whisper Inventory",
+  "trigger": { "eventType": "command.executed", "type": "application-event" },
+  "version": 1
+}
+```
+
+Restart the companion and authorize Twitch again to grant `user:manage:whispers`. Whispers are sent from the authorized broadcaster account, which must have a verified phone number. Test with another account: Twitch cannot whisper to itself. Twitch limits whispers to 40 unique recipients per day, 3 messages per second, and 100 per minute. Recipient privacy settings can block them, and Twitch may silently drop them even when the API returns success. The runtime logs API errors; successful API acceptance does not guarantee delivery. See [Send Whisper](https://dev.twitch.tv/docs/api/reference/#send-whisper).
 
 ## Add Another Reward
 

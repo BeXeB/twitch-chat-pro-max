@@ -173,6 +173,71 @@ test('sends chat through the companion Helix client', async () => {
   }
 });
 
+test('sends a private whisper and handles an empty Helix response', async () => {
+  const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
+  const twitchApi = new TwitchApiClient(config, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ body: unknown; url: string; method: string }> = [];
+  const sentAt: number[] = [];
+  let rejectWhisper = false;
+  globalThis.fetch = (async (input, init) => {
+    const url = String(input);
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: ['user:manage:whispers'],
+        token_type: 'bearer',
+      });
+    }
+    requests.push({ body: JSON.parse(String(init?.body)), url, method: init?.method ?? 'GET' });
+    sentAt.push(Date.now());
+    if (rejectWhisper) {
+      return new Response(JSON.stringify({ message: 'Whispers are blocked.' }), { status: 400 });
+    }
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+  try {
+    const state = new URL(twitchAuth.createAuthorizationUrl()).searchParams.get('state');
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+    await twitchApi.sendWhisper({ senderId: '1', recipientId: '2', message: 'Inventory' });
+    assert.deepEqual(requests, [
+      {
+        body: { message: 'Inventory' },
+        method: 'POST',
+        url: 'https://api.example.test/helix/whispers?from_user_id=1&to_user_id=2',
+      },
+    ]);
+    await assert.rejects(
+      twitchApi.sendWhisper({ senderId: '1', recipientId: '1', message: 'Private' }),
+      /own account/,
+    );
+    await assert.rejects(
+      twitchApi.sendWhisper({ senderId: '1', recipientId: '2', message: 'x'.repeat(501) }),
+      /500/,
+    );
+    await assert.rejects(
+      twitchApi.sendWhisper({ senderId: '1', recipientId: '2', message: ' ' }),
+      /500/,
+    );
+    assert.equal(requests.length, 1);
+    rejectWhisper = true;
+    await assert.rejects(
+      twitchApi.sendWhisper({ senderId: '1', recipientId: '2', message: 'Private' }),
+      /Whispers are blocked/,
+    );
+    rejectWhisper = false;
+    await twitchApi.sendWhisper({ senderId: '1', recipientId: '2', message: 'Retry' });
+    assert.equal(requests.length, 3);
+    assert.ok(sentAt[1] - sentAt[0] >= 600);
+    assert.ok(sentAt[2] - sentAt[1] >= 600);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('times out a user through the companion Helix client', async () => {
   const store = new MemoryRefreshTokenStore();
   const twitchAuth = new TwitchAuthService(config, store);

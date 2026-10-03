@@ -8,6 +8,76 @@ import {
 } from '../src/features/lootboxes/lootbox-catalog-repository';
 import { LootboxService } from '../src/features/lootboxes/lootbox-service';
 
+test('equips an owned item by its full name without changing quantities', async () => {
+  const inventory = new InMemoryInventoryRepository();
+  const catalog = structuredClone(starterLootboxCatalog);
+  catalog.items[0].name = 'Ember Text';
+  const service = new LootboxService(
+    new InMemoryLootboxCatalogRepository(catalog),
+    inventory,
+    () => 0,
+  );
+  await service.open({ boxId: 'common-lootbox', redemptionId: 'equip-drop', userId: '12345' });
+  assert.deepEqual(await service.equipByName('12345', '  EMBER   text  '), {
+    status: 'equipped',
+    itemName: 'Ember Text',
+  });
+  assert.deepEqual((await inventory.getByUserId('12345'))?.equippedCosmetics, {
+    'message-color': 'ember-text',
+  });
+  assert.deepEqual((await inventory.getByUserId('12345'))?.items, [
+    { itemId: 'ember-text', quantity: 1 },
+  ]);
+  assert.deepEqual(await service.equipByName('67890', 'Ember Text'), { status: 'not-owned' });
+  assert.deepEqual(await service.equipByName('12345', 'missing'), { status: 'not-owned' });
+  assert.deepEqual(await service.equipByName('12345', '   '), { status: 'name-missing' });
+  await assert.rejects(service.equipByName('invalid', 'Ember Text'), /user ID/i);
+});
+
+test('replaces only the matching slot and rejects ambiguous or removed equipment names', async () => {
+  const inventory = new InMemoryInventoryRepository();
+  const catalog = structuredClone(starterLootboxCatalog);
+  catalog.items.push({
+    id: 'rose-text',
+    name: 'Rose Text',
+    rarity: 'common',
+    cosmetic: { slot: 'message-color', value: '#FF0000' },
+  });
+  const service = new LootboxService(new InMemoryLootboxCatalogRepository(catalog), inventory);
+  for (const itemId of ['ember-text', 'mint-signature', 'rose-text', 'removed']) {
+    await inventory.awardOpening({
+      acquiredAt: '2026-10-03T00:00:00.000Z',
+      announced: true,
+      boxId: 'common-lootbox',
+      boxName: 'Cache',
+      itemId,
+      itemName: itemId,
+      redemptionId: itemId,
+      userId: '12345',
+    });
+  }
+  await inventory.equip('12345', 'message-color', 'ember-text');
+  await inventory.equip('12345', 'username-color', 'mint-signature');
+  assert.equal((await service.equipByName('12345', 'Rose Text')).status, 'equipped');
+  assert.deepEqual((await inventory.getByUserId('12345'))?.equippedCosmetics, {
+    'message-color': 'rose-text',
+    'username-color': 'mint-signature',
+  });
+  assert.deepEqual(await service.equipByName('12345', 'removed'), { status: 'not-owned' });
+  catalog.items[0].name = 'Rose Text';
+  const ambiguousService = new LootboxService(
+    new InMemoryLootboxCatalogRepository(catalog),
+    inventory,
+  );
+  assert.deepEqual(await ambiguousService.equipByName('12345', 'Rose Text'), {
+    status: 'ambiguous',
+  });
+  assert.equal(
+    (await inventory.getByUserId('12345'))?.equippedCosmetics['message-color'],
+    'rose-text',
+  );
+});
+
 test('selects the item at each rarity-weight boundary', async () => {
   const cases = [
     [0, 'ember-text'],
@@ -145,7 +215,7 @@ test('resolves equipped catalog items into per-user cosmetic values', async () =
     boxId: 'common-lootbox',
     boxName: 'Chat Style Cache',
     itemId: 'ember-text',
-    itemName: 'Ember Text',
+    itemName: 'Parázsszöveg',
     redemptionId: 'redemption-1',
     userId: '12345',
   });

@@ -299,6 +299,9 @@ export class LocalRuntimeClient {
     }
 
     this.recentEvents.update((events) => [...events, message.event].slice(-100));
+    if (message.event.type === 'automation.inventory-equipped') {
+      void this.loadChatCosmetics().catch(() => undefined);
+    }
     if (message.event.type === 'twitch.channel.chat.message') {
       const previousIds = new Set(
         this.viewState().chatMessages.map((chatMessage) => chatMessage.id),
@@ -314,6 +317,7 @@ export class LocalRuntimeClient {
   }
 
   private applySnapshot(snapshot: RuntimeSnapshot): void {
+    void this.loadChatCosmetics().catch(() => undefined);
     this.animatedChatMessageId.set(null);
     this.status.set(snapshot.status);
     this.recentEvents.set(snapshot.recentEvents);

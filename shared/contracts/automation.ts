@@ -28,11 +28,13 @@ export type AutomationAction =
   | DelayAction
   | DeleteChatMessageAction
   | EmitRuntimeEventAction
+  | EquipInventoryAction
   | IncreaseCustomRewardCostAction
   | OpenLootboxAction
   | EndPollAction
   | ResolvePredictionAction
   | SendChatMessageAction
+  | WhisperInventoryAction
   | SendShoutoutAction
   | SendDiscordWebhookAction
   | ShowAlertAction
@@ -49,6 +51,14 @@ export interface AddChannelVipAction {
 export interface OpenLootboxAction {
   lootboxId: string;
   type: 'open-lootbox';
+}
+
+export interface WhisperInventoryAction {
+  type: 'whisper-inventory';
+}
+
+export interface EquipInventoryAction {
+  type: 'equip-inventory';
 }
 
 export interface AddLeaderboardPointsAction {

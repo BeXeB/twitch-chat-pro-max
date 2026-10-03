@@ -193,6 +193,10 @@ export function isAutomationAction(value: unknown): value is AutomationAction {
     return isRequiredText(value['rewardId']) && isIntegerInRange(value['amount'], 1, 1000000000);
   }
 
+  if (value['type'] === 'whisper-inventory' || value['type'] === 'equip-inventory') {
+    return true;
+  }
+
   if (value['type'] === 'open-lootbox') {
     return (
       typeof value['lootboxId'] === 'string' &&
