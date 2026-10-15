@@ -3,6 +3,7 @@ import { Component, computed } from '@angular/core';
 import {
   ChatBorderStyle,
   ChatEntryEffect,
+  ChatMessageFont,
   CosmeticSlot,
 } from '../../../../shared/contracts/lootboxes';
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
@@ -18,6 +19,10 @@ export const CHAT_ENTRY_ANIMATIONS: Record<ChatEntryEffect, string> = {
   'drift-up': 'overlay-drift-up',
   'fade-in': 'overlay-fade-in',
   'slide-in': 'overlay-slide-in',
+};
+
+export const CHAT_MESSAGE_FONT_FAMILIES: Record<ChatMessageFont, string> = {
+  'jetbrains-mono': "'JetBrains Mono', monospace",
 };
 
 @Component({
@@ -42,6 +47,11 @@ export class OverlayComponent {
   borderClassFor(userId: string): string | null {
     const style = this.cosmeticsFor(userId)['border-style'] as ChatBorderStyle | undefined;
     return style ? CHAT_BORDER_CLASSES[style] : null;
+  }
+
+  messageFontFamilyFor(userId: string): string | null {
+    const font = this.cosmeticsFor(userId)['message-font'] as ChatMessageFont | undefined;
+    return font ? CHAT_MESSAGE_FONT_FAMILIES[font] : null;
   }
 
   entryAnimationFor(messageId: string, userId: string): string | null {

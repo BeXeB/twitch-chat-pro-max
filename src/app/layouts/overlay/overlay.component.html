@@ -24,7 +24,10 @@
         >
           {{ message.displayName }}
         </strong>
-        <span [style.color]="cosmeticsFor(message.userId)['message-color'] ?? null">
+        <span
+          [style.color]="cosmeticsFor(message.userId)['message-color'] ?? null"
+          [style.font-family]="messageFontFamilyFor(message.userId)"
+        >
           : {{ message.message }}
         </span>
       </p>

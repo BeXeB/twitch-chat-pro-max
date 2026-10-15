@@ -43,7 +43,7 @@ test('seeds a starter catalog only when the local file is missing', async () => 
   }
 });
 
-test('validates cosmetic values for message colors, borders, and entry effects', () => {
+test('validates cosmetic values for message colors, borders, entry effects, and fonts', () => {
   assert.equal(isLootboxCatalogDocument(starterLootboxCatalog), true);
 
   const invalidColor = structuredClone(starterLootboxCatalog);
@@ -53,6 +53,10 @@ test('validates cosmetic values for message colors, borders, and entry effects',
   const invalidEffect = structuredClone(starterLootboxCatalog);
   invalidEffect.items[4].cosmetic.value = 'spin-forever';
   assert.equal(isLootboxCatalogDocument(invalidEffect), false);
+
+  const invalidFont = structuredClone(starterLootboxCatalog);
+  Reflect.set(invalidFont.items[0], 'cosmetic', { slot: 'message-font', value: 'papyrus' });
+  assert.equal(isLootboxCatalogDocument(invalidFont), false);
 
   const invalidSlot = structuredClone(starterLootboxCatalog);
   Reflect.set(invalidSlot.items[0].cosmetic, 'slot', 'weapon');

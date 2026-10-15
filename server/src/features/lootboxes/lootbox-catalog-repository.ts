@@ -1,6 +1,7 @@
 import {
   isChatBorderStyle,
   isChatEntryEffect,
+  isChatMessageFont,
   LOOTBOX_RARITIES,
   LootboxCatalogDocument,
   LootboxCosmetic,
@@ -33,6 +34,12 @@ export const starterLootboxCatalog: LootboxCatalogDocument = {
       rarity: 'common',
     },
     {
+      cosmetic: { slot: 'message-font', value: 'jetbrains-mono' },
+      id: 'jetbrains-mono-font',
+      name: 'JetBrains Mono Betűtípus',
+      rarity: 'common',
+    },
+    {
       cosmetic: { slot: 'username-color', value: '#72E0B6' },
       id: 'mint-signature',
       name: 'Mentazöld Név',
@@ -60,7 +67,14 @@ export const starterLootboxCatalog: LootboxCatalogDocument = {
   lootboxes: [
     {
       id: 'common-lootbox',
-      itemIds: ['ember-text', 'mint-signature', 'gilded-edge', 'starlight-frame', 'slide-entry'],
+      itemIds: [
+        'ember-text',
+        'jetbrains-mono-font',
+        'mint-signature',
+        'gilded-edge',
+        'starlight-frame',
+        'slide-entry',
+      ],
       name: 'Chat Style Cache',
       rarityWeights: {
         common: 40,
@@ -140,6 +154,8 @@ function isLootboxCosmetic(value: unknown): value is LootboxCosmetic {
       return isChatBorderStyle(value['value']);
     case 'entry-effect':
       return isChatEntryEffect(value['value']);
+    case 'message-font':
+      return isChatMessageFont(value['value']);
     default:
       return false;
   }

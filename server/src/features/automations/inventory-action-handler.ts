@@ -14,6 +14,7 @@ import {
 
 const equipmentSlots: Array<{ slot: CosmeticSlot | null; label: string }> = [
   { slot: 'message-color', label: 'Üzenetszín' },
+  { slot: 'message-font', label: 'Betűtípus' },
   { slot: 'username-color', label: 'Névszín' },
   { slot: 'border-color', label: 'Szegélyszín' },
   { slot: 'border-style', label: 'Szegélystílus' },

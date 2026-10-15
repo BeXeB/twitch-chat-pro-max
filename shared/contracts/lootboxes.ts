@@ -3,6 +3,7 @@ export type CosmeticSlot =
   | 'border-style'
   | 'entry-effect'
   | 'message-color'
+  | 'message-font'
   | 'username-color';
 
 export const CHAT_BORDER_STYLES = ['neon', 'ornate', 'starlight'] as const;
@@ -10,6 +11,9 @@ export type ChatBorderStyle = (typeof CHAT_BORDER_STYLES)[number];
 
 export const CHAT_ENTRY_EFFECTS = ['bounce-in', 'drift-up', 'fade-in', 'slide-in'] as const;
 export type ChatEntryEffect = (typeof CHAT_ENTRY_EFFECTS)[number];
+
+export const CHAT_MESSAGE_FONTS = ['jetbrains-mono'] as const;
+export type ChatMessageFont = (typeof CHAT_MESSAGE_FONTS)[number];
 
 export type ChatCosmeticsByUserId = Record<string, Partial<Record<CosmeticSlot, string>>>;
 
@@ -25,6 +29,7 @@ type CosmeticValueBySlot = {
   'border-style': ChatBorderStyle;
   'entry-effect': ChatEntryEffect;
   'message-color': string;
+  'message-font': ChatMessageFont;
   'username-color': string;
 };
 
@@ -54,4 +59,8 @@ export function isChatBorderStyle(value: unknown): value is ChatBorderStyle {
 
 export function isChatEntryEffect(value: unknown): value is ChatEntryEffect {
   return typeof value === 'string' && CHAT_ENTRY_EFFECTS.some((effect) => effect === value);
+}
+
+export function isChatMessageFont(value: unknown): value is ChatMessageFont {
+  return typeof value === 'string' && CHAT_MESSAGE_FONTS.some((font) => font === value);
 }
