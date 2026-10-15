@@ -4,6 +4,7 @@ import { InventoryOpeningRecord } from '../../../../shared/contracts/inventory';
 import {
   ChatCosmeticsByUserId,
   CosmeticSlot,
+  CosmeticValuesBySlot,
   LootboxDefinition,
   LootboxItemDefinition,
   LootboxRarity,
@@ -134,16 +135,12 @@ export class LootboxService {
     const cosmeticsByUserId: ChatCosmeticsByUserId = {};
 
     for (const inventory of inventories) {
-      const cosmetics: Partial<Record<CosmeticSlot, string>> = {};
+      const cosmetics: Partial<CosmeticValuesBySlot> = {};
 
       for (const [slot, itemId] of Object.entries(inventory.equippedCosmetics)) {
-        if (!isCosmeticSlot(slot)) {
-          continue;
-        }
-
         const item = itemsById.get(itemId);
-        if (item?.cosmetic.slot === slot) {
-          cosmetics[slot] = item.cosmetic.value;
+        if (isCosmeticSlot(slot) && item?.cosmetic.slot === slot) {
+          setCosmetic(cosmetics, item.cosmetic);
         }
       }
 
@@ -153,6 +150,32 @@ export class LootboxService {
     }
 
     return cosmeticsByUserId;
+  }
+}
+
+function setCosmetic(
+  cosmetics: Partial<CosmeticValuesBySlot>,
+  cosmetic: LootboxItemDefinition['cosmetic'],
+): void {
+  switch (cosmetic.slot) {
+    case 'background-color':
+      cosmetics['background-color'] = cosmetic.value;
+      break;
+    case 'border':
+      cosmetics.border = cosmetic.value;
+      break;
+    case 'entry-effect':
+      cosmetics['entry-effect'] = cosmetic.value;
+      break;
+    case 'message-color':
+      cosmetics['message-color'] = cosmetic.value;
+      break;
+    case 'message-font':
+      cosmetics['message-font'] = cosmetic.value;
+      break;
+    case 'username-color':
+      cosmetics['username-color'] = cosmetic.value;
+      break;
   }
 }
 

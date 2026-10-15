@@ -1,6 +1,6 @@
 export type CosmeticSlot =
-  | 'border-color'
-  | 'border-style'
+  | 'background-color'
+  | 'border'
   | 'entry-effect'
   | 'message-color'
   | 'message-font'
@@ -8,6 +8,11 @@ export type CosmeticSlot =
 
 export const CHAT_BORDER_STYLES = ['neon', 'ornate', 'starlight'] as const;
 export type ChatBorderStyle = (typeof CHAT_BORDER_STYLES)[number];
+export type ChatBorderValue = ChatBorderStyle | `#${string}`;
+
+export const CHAT_BACKGROUND_PRESETS = ['split-contrast-blue'] as const;
+export type ChatBackgroundPreset = (typeof CHAT_BACKGROUND_PRESETS)[number];
+export type ChatBackgroundValue = ChatBackgroundPreset | `#${string}`;
 
 export const CHAT_ENTRY_EFFECTS = ['bounce-in', 'drift-up', 'fade-in', 'slide-in'] as const;
 export type ChatEntryEffect = (typeof CHAT_ENTRY_EFFECTS)[number];
@@ -15,7 +20,7 @@ export type ChatEntryEffect = (typeof CHAT_ENTRY_EFFECTS)[number];
 export const CHAT_MESSAGE_FONTS = ['jetbrains-mono'] as const;
 export type ChatMessageFont = (typeof CHAT_MESSAGE_FONTS)[number];
 
-export type ChatCosmeticsByUserId = Record<string, Partial<Record<CosmeticSlot, string>>>;
+export type ChatCosmeticsByUserId = Record<string, Partial<CosmeticValuesBySlot>>;
 
 export const LOOTBOX_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 export type LootboxRarity = (typeof LOOTBOX_RARITIES)[number];
@@ -25,13 +30,15 @@ export type LootboxCosmetic = {
 }[CosmeticSlot];
 
 type CosmeticValueBySlot = {
-  'border-color': string;
-  'border-style': ChatBorderStyle;
+  'background-color': ChatBackgroundValue;
+  border: ChatBorderValue;
   'entry-effect': ChatEntryEffect;
   'message-color': string;
   'message-font': ChatMessageFont;
   'username-color': string;
 };
+
+export type CosmeticValuesBySlot = CosmeticValueBySlot;
 
 export interface LootboxItemDefinition {
   cosmetic: LootboxCosmetic;
@@ -55,6 +62,18 @@ export interface LootboxCatalogDocument {
 
 export function isChatBorderStyle(value: unknown): value is ChatBorderStyle {
   return typeof value === 'string' && CHAT_BORDER_STYLES.some((style) => style === value);
+}
+
+export function isChatBorderColor(value: unknown): value is `#${string}` {
+  return typeof value === 'string' && /^#[\da-fA-F]{6}$/.test(value);
+}
+
+export function isChatBackgroundValue(value: unknown): value is ChatBackgroundValue {
+  return isChatBorderColor(value) || isChatBackgroundPreset(value);
+}
+
+export function isChatBackgroundPreset(value: unknown): value is ChatBackgroundPreset {
+  return typeof value === 'string' && CHAT_BACKGROUND_PRESETS.some((preset) => preset === value);
 }
 
 export function isChatEntryEffect(value: unknown): value is ChatEntryEffect {

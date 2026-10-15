@@ -289,7 +289,7 @@ test('whispers owned items to the command author grouped by equipment slot', asy
   assert.match(whispers[0].message, /Üzenetszín: Parázsvörös Szöveg \[felszerelve\]/);
   assert.equal(whispers[0].message.match(/\[felszerelve\]/g)?.length, 1);
   assert.ok(!whispers[0].message.includes(' x2'));
-  assert.match(whispers[0].message, /Szegélystílus: nincs/);
+  assert.match(whispers[0].message, /Szegély: nincs/);
   assert.deepEqual(await lootboxes.getInventoryItems('67890'), []);
 });
 
@@ -305,10 +305,13 @@ test('formats every starter item with only its Hungarian equipment slot and name
   assert.equal(
     formatInventoryWhispers(items).join(' '),
     'Inventory' +
+      ' | Háttérszín: Éjféli Háttér' +
+      ' | Háttérszín: Kétszínű, kék vonalas háttér' +
+      ' | Szegély: Aranyszínű Szegély' +
+      ' | Szegély: Csillagfényes Keret' +
       ' | Üzenetszín: Parázsvörös Szöveg' +
+      ' | Betűtípus: JetBrains Mono Betűtípus' +
       ' | Névszín: Mentazöld Név' +
-      ' | Szegélyszín: Aranyozott Keret' +
-      ' | Szegélystílus: Csillagfényes Keret' +
       ' | Belépési effekt: Becsúszás',
   );
 });

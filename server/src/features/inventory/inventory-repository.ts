@@ -161,8 +161,8 @@ export function validateUserId(userId: string): void {
 
 export function isCosmeticSlot(value: unknown): value is CosmeticSlot {
   return (
-    value === 'border-color' ||
-    value === 'border-style' ||
+    value === 'background-color' ||
+    value === 'border' ||
     value === 'entry-effect' ||
     value === 'message-color' ||
     value === 'username-color'

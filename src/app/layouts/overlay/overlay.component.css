@@ -32,6 +32,7 @@
   line-height: 1.25;
   overflow-wrap: normal;
   border-left: 3px solid var(--message-border-color, transparent);
+  background-color: var(--message-background-color, transparent);
   box-sizing: border-box;
   animation-duration: 460ms;
   animation-timing-function: cubic-bezier(0.2, 0.75, 0.25, 1);
@@ -53,6 +54,18 @@
 .overlay-message--border-ornate {
   border: 3px double var(--message-border-color, #fff);
   border-radius: 5px;
+}
+
+.overlay-message--background-split-contrast-blue {
+  background: linear-gradient(
+    to right,
+    #fff 0%,
+    #fff calc(50% - 1px),
+    #7ddfff calc(50% - 1px),
+    #7ddfff calc(50% + 1px),
+    #000 calc(50% + 1px),
+    #000 100%
+  );
 }
 
 @keyframes overlay-fade-in {

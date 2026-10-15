@@ -16,7 +16,11 @@
         [class.overlay-message--border-starlight]="
           borderClassFor(message.userId) === 'overlay-message--border-starlight'
         "
-        [style.--message-border-color]="cosmeticsFor(message.userId)['border-color'] ?? null"
+        [class.overlay-message--background-split-contrast-blue]="
+          backgroundClassFor(message.userId) === 'overlay-message--background-split-contrast-blue'
+        "
+        [style.--message-background-color]="backgroundColorFor(message.userId)"
+        [style.--message-border-color]="borderColorFor(message.userId)"
         [style.animation-name]="entryAnimationFor(message.id, message.userId)"
       >
         <strong

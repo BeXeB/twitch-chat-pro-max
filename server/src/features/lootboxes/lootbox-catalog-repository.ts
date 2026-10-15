@@ -1,5 +1,7 @@
 import {
   isChatBorderStyle,
+  isChatBorderColor,
+  isChatBackgroundValue,
   isChatEntryEffect,
   isChatMessageFont,
   LOOTBOX_RARITIES,
@@ -46,16 +48,28 @@ export const starterLootboxCatalog: LootboxCatalogDocument = {
       rarity: 'uncommon',
     },
     {
-      cosmetic: { slot: 'border-color', value: '#F0C56E' },
+      cosmetic: { slot: 'border', value: '#F0C56E' },
       id: 'gilded-edge',
-      name: 'Aranyozott Keret',
+      name: 'Aranyszínű Szegély',
       rarity: 'rare',
     },
     {
-      cosmetic: { slot: 'border-style', value: 'starlight' },
+      cosmetic: { slot: 'border', value: 'starlight' },
       id: 'starlight-frame',
       name: 'Csillagfényes Keret',
       rarity: 'epic',
+    },
+    {
+      cosmetic: { slot: 'background-color', value: 'split-contrast-blue' },
+      id: 'split-contrast-background',
+      name: 'Kétszínű, kék vonalas háttér',
+      rarity: 'epic',
+    },
+    {
+      cosmetic: { slot: 'background-color', value: '#24303B' },
+      id: 'midnight-background',
+      name: 'Éjféli Háttér',
+      rarity: 'rare',
     },
     {
       cosmetic: { slot: 'entry-effect', value: 'slide-in' },
@@ -73,6 +87,7 @@ export const starterLootboxCatalog: LootboxCatalogDocument = {
         'mint-signature',
         'gilded-edge',
         'starlight-frame',
+        'midnight-background',
         'slide-entry',
       ],
       name: 'Chat Style Cache',
@@ -141,17 +156,18 @@ function isLootboxItem(value: unknown): value is LootboxItemDefinition {
 }
 
 function isLootboxCosmetic(value: unknown): value is LootboxCosmetic {
-  if (!isRecord(value) || typeof value['value'] !== 'string') {
+  if (!isRecord(value)) {
     return false;
   }
 
   switch (value['slot']) {
+    case 'background-color':
+      return isChatBackgroundValue(value['value']);
     case 'message-color':
     case 'username-color':
-    case 'border-color':
-      return /^#[\da-fA-F]{6}$/.test(value['value']);
-    case 'border-style':
-      return isChatBorderStyle(value['value']);
+      return typeof value['value'] === 'string' && /^#[\da-fA-F]{6}$/.test(value['value']);
+    case 'border':
+      return isChatBorderColor(value['value']) || isChatBorderStyle(value['value']);
     case 'entry-effect':
       return isChatEntryEffect(value['value']);
     case 'message-font':

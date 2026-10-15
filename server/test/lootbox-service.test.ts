@@ -122,7 +122,8 @@ test('selects uniformly among items of the rolled rarity', async () => {
 
   for (const [selectedItemIndex, expectedItemId] of [
     [0, 'ember-text'],
-    [1, 'rose-text'],
+    [1, 'jetbrains-mono-font'],
+    [2, 'rose-text'],
   ] as const) {
     let rollNumber = 0;
     const selectedIndexes = [0, selectedItemIndex] as const;
@@ -144,7 +145,7 @@ test('selects uniformly among items of the rolled rarity', async () => {
 
     assert.equal(opening.itemId, expectedItemId);
     assert.equal(rollNumber, 2);
-    assert.deepEqual(rollMaximums, [100, 2]);
+    assert.deepEqual(rollMaximums, [100, 3]);
   }
 });
 

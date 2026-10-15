@@ -21,6 +21,18 @@ test('loads the configured local catalog with item lists on lootboxes', async ()
     catalog.items.some((item) => 'itemIds' in item),
     false,
   );
+  assert.deepEqual(catalog.items.find((item) => item.id === 'starlight-frame')?.cosmetic, {
+    slot: 'border',
+    value: 'starlight',
+  });
+  assert.equal(
+    catalog.items.some((item) => item.cosmetic.slot === 'background-color'),
+    true,
+  );
+  assert.deepEqual(
+    catalog.items.find((item) => item.id === 'split-contrast-background')?.cosmetic,
+    { slot: 'background-color', value: 'split-contrast-blue' },
+  );
 });
 
 test('seeds a starter catalog only when the local file is missing', async () => {
@@ -51,8 +63,24 @@ test('validates cosmetic values for message colors, borders, entry effects, and 
   assert.equal(isLootboxCatalogDocument(invalidColor), false);
 
   const invalidEffect = structuredClone(starterLootboxCatalog);
-  invalidEffect.items[4].cosmetic.value = 'spin-forever';
+  invalidEffect.items[6].cosmetic.value = 'spin-forever';
   assert.equal(isLootboxCatalogDocument(invalidEffect), false);
+
+  const invalidBorderStyle = structuredClone(starterLootboxCatalog);
+  Reflect.set(invalidBorderStyle.items[4].cosmetic, 'value', 'spin-forever');
+  assert.equal(isLootboxCatalogDocument(invalidBorderStyle), false);
+
+  const invalidBorderColor = structuredClone(starterLootboxCatalog);
+  Reflect.set(invalidBorderColor.items[3].cosmetic, 'value', '#123');
+  assert.equal(isLootboxCatalogDocument(invalidBorderColor), false);
+
+  const invalidBackground = structuredClone(starterLootboxCatalog);
+  invalidBackground.items[5].cosmetic.value = 'url(javascript:alert(1))';
+  assert.equal(isLootboxCatalogDocument(invalidBackground), false);
+
+  const unknownBackgroundPreset = structuredClone(starterLootboxCatalog);
+  unknownBackgroundPreset.items[5].cosmetic.value = 'split-purple';
+  assert.equal(isLootboxCatalogDocument(unknownBackgroundPreset), false);
 
   const invalidFont = structuredClone(starterLootboxCatalog);
   Reflect.set(invalidFont.items[0], 'cosmetic', { slot: 'message-font', value: 'papyrus' });

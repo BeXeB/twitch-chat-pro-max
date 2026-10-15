@@ -2,9 +2,13 @@ import { Component, computed } from '@angular/core';
 
 import {
   ChatBorderStyle,
+  ChatBackgroundPreset,
   ChatEntryEffect,
   ChatMessageFont,
-  CosmeticSlot,
+  CosmeticValuesBySlot,
+  isChatBorderColor,
+  isChatBorderStyle,
+  isChatBackgroundPreset,
 } from '../../../../shared/contracts/lootboxes';
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
 
@@ -12,6 +16,10 @@ export const CHAT_BORDER_CLASSES: Record<ChatBorderStyle, string> = {
   neon: 'overlay-message--border-neon',
   ornate: 'overlay-message--border-ornate',
   starlight: 'overlay-message--border-starlight',
+};
+
+export const CHAT_BACKGROUND_CLASSES: Record<ChatBackgroundPreset, string> = {
+  'split-contrast-blue': 'overlay-message--background-split-contrast-blue',
 };
 
 export const CHAT_ENTRY_ANIMATIONS: Record<ChatEntryEffect, string> = {
@@ -40,17 +48,34 @@ export class OverlayComponent {
     void this.runtime.loadChatCosmetics().catch(() => undefined);
   }
 
-  cosmeticsFor(userId: string): Partial<Record<CosmeticSlot, string>> {
+  cosmeticsFor(userId: string): Partial<CosmeticValuesBySlot> {
     return this.runtime.chatCosmetics()[userId] ?? {};
   }
 
   borderClassFor(userId: string): string | null {
-    const style = this.cosmeticsFor(userId)['border-style'] as ChatBorderStyle | undefined;
-    return style ? CHAT_BORDER_CLASSES[style] : null;
+    const border = this.cosmeticsFor(userId).border;
+    return isChatBorderStyle(border) ? CHAT_BORDER_CLASSES[border] : null;
+  }
+
+  borderColorFor(userId: string): string | null {
+    const border = this.cosmeticsFor(userId).border;
+    return isChatBorderColor(border) ? border : null;
+  }
+
+  backgroundClassFor(userId: string): string | null {
+    const background = this.cosmeticsFor(userId)['background-color'];
+    return isChatBackgroundPreset(background) ? CHAT_BACKGROUND_CLASSES[background] : null;
+  }
+
+  backgroundColorFor(userId: string): string | null {
+    const background = this.cosmeticsFor(userId)['background-color'];
+    return typeof background === 'string' && /^#[\da-fA-F]{6}$/.test(background)
+      ? background
+      : null;
   }
 
   messageFontFamilyFor(userId: string): string | null {
-    const font = this.cosmeticsFor(userId)['message-font'] as ChatMessageFont | undefined;
+    const font = this.cosmeticsFor(userId)['message-font'];
     return font ? CHAT_MESSAGE_FONT_FAMILIES[font] : null;
   }
 
@@ -59,7 +84,7 @@ export class OverlayComponent {
       return null;
     }
 
-    const effect = this.cosmeticsFor(userId)['entry-effect'] as ChatEntryEffect | undefined;
+    const effect = this.cosmeticsFor(userId)['entry-effect'];
     return effect ? CHAT_ENTRY_ANIMATIONS[effect] : null;
   }
 }
