@@ -34,3 +34,19 @@ export interface TwitchStreamInfo {
   userName: string;
   viewerCount: number;
 }
+
+export interface TwitchChannelInfo {
+  gameId: string;
+  gameName: string;
+  title: string;
+}
+
+export interface TwitchGameCategory {
+  id: string;
+  name: string;
+}
+
+export interface TwitchChannelInfoUpdateRequest {
+  gameId?: string;
+  title?: string;
+}

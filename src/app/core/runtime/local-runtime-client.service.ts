@@ -14,8 +14,11 @@ import { AutomationDefinition, ChatSettingsUpdate } from '../../../../shared/con
 import { CommandDefinition } from '../../../../shared/contracts/command';
 import { ChannelPointReward, RewardAutomationMapping } from '../../../../shared/contracts/rewards';
 import {
+  TwitchChannelInfo,
+  TwitchChannelInfoUpdateRequest,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
 
@@ -268,6 +271,21 @@ export class LocalRuntimeClient {
 
   getStreamInfo(): Promise<TwitchStreamInfo | null> {
     return firstValueFrom(this.http.get<TwitchStreamInfo | null>('/api/stream'));
+  }
+
+  getChannelInfo(): Promise<TwitchChannelInfo> {
+    return firstValueFrom(this.http.get<TwitchChannelInfo>('/api/channel'));
+  }
+
+  searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
+    return firstValueFrom(
+      this.http.get<TwitchGameCategory[]>('/api/game-categories', { params: { query } }),
+    );
+  }
+
+  async updateChannelInfo(updates: TwitchChannelInfoUpdateRequest): Promise<boolean> {
+    await firstValueFrom(this.http.patch<void>('/api/channel', updates));
+    return true;
   }
 
   getRewardMappings(): Promise<RewardAutomationMapping[]> {

@@ -1,8 +1,11 @@
 import { ChatSettingsUpdate } from '../../../../shared/contracts/automation';
 import { ChannelPointReward } from '../../../../shared/contracts/rewards';
 import {
+  TwitchChannelInfo,
+  TwitchChannelInfoUpdateRequest,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
 import { TwitchApiClient, TwitchCurrentUser } from '../../twitch/twitch-api.client';
@@ -97,6 +100,21 @@ export class TwitchOperationsService {
   async getStreamInfo(): Promise<TwitchStreamInfo | null> {
     const { api, broadcaster } = this.getContext();
     return api.getStreamInfo(broadcaster.id);
+  }
+
+  async getChannelInfo(): Promise<TwitchChannelInfo> {
+    const { api, broadcaster } = this.getContext();
+    return api.getChannelInfo(broadcaster.id);
+  }
+
+  async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
+    const { api } = this.getContext();
+    return api.searchGameCategories(query);
+  }
+
+  async updateChannelInfo(updates: TwitchChannelInfoUpdateRequest): Promise<void> {
+    const { api, broadcaster } = this.getContext();
+    await api.updateChannelInfo(broadcaster.id, updates);
   }
 
   async getUserIdByLogin(login: string): Promise<string> {

@@ -273,6 +273,50 @@ h3 {
   font-size: 12px;
   font-weight: 500;
 }
+.channel-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
+  padding: 18px 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+.channel-editor > label,
+.category-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.category-field > label {
+  color: var(--muted);
+}
+.channel-editor input,
+.channel-editor select {
+  border-color: var(--line);
+  border-radius: 3px;
+  background: #101412;
+  font-size: 12px;
+}
+.category-search {
+  display: flex;
+  gap: 8px;
+}
+.category-search input {
+  min-width: 0;
+  flex: 1;
+}
+.category-search .text-button {
+  flex: 0 0 auto;
+}
+.category-hint {
+  margin: 0;
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
 .event-list,
 .definition-list,
 .reward-list {
@@ -588,6 +632,7 @@ h3 {
   .stream-summary > div:first-child {
     grid-column: span 2;
   }
+  .channel-editor,
   .editor-form,
   .operations-grid {
     grid-template-columns: 1fr;

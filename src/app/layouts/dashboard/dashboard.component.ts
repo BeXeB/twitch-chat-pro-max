@@ -12,6 +12,8 @@ import {
 } from '../../../../shared/contracts/rewards';
 import {
   CustomRewardCreateRequest,
+  TwitchChannelInfo,
+  TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
@@ -41,8 +43,11 @@ export class DashboardComponent implements OnInit {
   readonly rewards = signal<Awaited<ReturnType<LocalRuntimeClient['getCustomRewards']>>>([]);
   readonly rewardMappings = signal<RewardAutomationMapping[]>([]);
   readonly streamInfo = signal<TwitchStreamInfo | null>(null);
+  readonly channelInfo = signal<TwitchChannelInfo | null>(null);
+  readonly gameCategories = signal<TwitchGameCategory[]>([]);
   readonly loading = signal(false);
   readonly busy = signal(false);
+  readonly categorySearchBusy = signal(false);
   readonly notice = signal<DashboardNotice | null>(null);
   readonly viewState = this.runtime.viewState;
   readonly runtimeStatus = this.runtime.status;
@@ -99,6 +104,9 @@ export class DashboardComponent implements OnInit {
   predictionTitle = '';
   predictionOutcomes = '';
   predictionDurationSeconds = 120;
+  channelTitle = '';
+  categorySearchQuery = '';
+  selectedGameId = '';
 
   constructor(readonly runtime: LocalRuntimeClient) {}
 
@@ -109,20 +117,38 @@ export class DashboardComponent implements OnInit {
   async refresh(): Promise<void> {
     this.loading.set(true);
 
+    let channelError: unknown = null;
+
     try {
-      const [automations, commands, rewards, mappings, streamInfo] = await Promise.all([
-        this.runtime.getAutomations(),
-        this.runtime.getCommands(),
-        this.runtime.getCustomRewards(),
-        this.runtime.getRewardMappings(),
-        this.runtime.getStreamInfo().catch(() => null),
-      ]);
+      const [automations, commands, rewards, mappings, streamInfo, channelInfo] = await Promise.all(
+        [
+          this.runtime.getAutomations(),
+          this.runtime.getCommands(),
+          this.runtime.getCustomRewards(),
+          this.runtime.getRewardMappings(),
+          this.runtime.getStreamInfo().catch(() => null),
+          this.runtime.getChannelInfo().catch((error: unknown) => {
+            channelError = error;
+            return null;
+          }),
+        ],
+      );
       this.automations.set(automations);
       this.commands.set(commands);
       this.rewards.set(rewards);
       this.rewardMappings.set(mappings);
       this.streamInfo.set(streamInfo);
-      this.notice.set(null);
+      this.channelInfo.set(channelInfo);
+      if (channelInfo) {
+        this.channelTitle = channelInfo.title;
+        this.categorySearchQuery = channelInfo.gameName;
+        this.selectedGameId = channelInfo.gameId;
+      }
+      if (channelError) {
+        this.showError(channelError);
+      } else {
+        this.notice.set(null);
+      }
     } catch (error) {
       this.showError(error);
     } finally {
@@ -262,6 +288,52 @@ export class DashboardComponent implements OnInit {
     await this.runOperation(async () => {
       this.rewards.set(await this.runtime.syncCustomRewards());
       this.showNotice('Reward catalog synchronized.', 'success');
+    });
+  }
+
+  async searchGameCategories(): Promise<void> {
+    const query = this.categorySearchQuery.trim();
+
+    if (!query) {
+      this.showNotice('Enter a category name to search.', 'error');
+      return;
+    }
+
+    this.categorySearchBusy.set(true);
+
+    try {
+      this.gameCategories.set(await this.runtime.searchGameCategories(query));
+    } catch (error) {
+      this.showError(error);
+    } finally {
+      this.categorySearchBusy.set(false);
+    }
+  }
+
+  async saveChannelInfo(): Promise<void> {
+    const title = this.channelTitle.trim();
+    const currentChannel = this.channelInfo();
+    const gameId =
+      this.selectedGameId && this.selectedGameId !== currentChannel?.gameId
+        ? this.selectedGameId
+        : undefined;
+
+    if (!title) {
+      this.showNotice('A stream title is required.', 'error');
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.updateChannelInfo({
+        ...(gameId ? { gameId } : {}),
+        title,
+      });
+      const updatedChannel = await this.runtime.getChannelInfo();
+      this.channelInfo.set(updatedChannel);
+      this.channelTitle = updatedChannel.title;
+      this.categorySearchQuery = updatedChannel.gameName;
+      this.selectedGameId = updatedChannel.gameId;
+      this.showNotice('Stream information updated.', 'success');
     });
   }
 

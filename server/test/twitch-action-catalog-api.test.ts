@@ -419,6 +419,20 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
       });
     }
 
+    if (url === 'https://api.example.test/helix/channels?broadcaster_id=broadcaster') {
+      if (init?.method === 'PATCH') {
+        return new Response(null, { status: 204 });
+      }
+
+      return jsonResponse({
+        data: [{ game_id: 'game-1', game_name: 'Example Game', title: 'Live now' }],
+      });
+    }
+
+    if (url === 'https://api.example.test/helix/search/categories?first=10&query=Example+Game') {
+      return jsonResponse({ data: [{ id: 'game-1', name: 'Example Game' }] });
+    }
+
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
 
@@ -441,6 +455,12 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
     });
     await twitchApi.deleteCustomReward('broadcaster', 'reward-1');
     const stream = await twitchApi.getStreamInfo('broadcaster');
+    const channel = await twitchApi.getChannelInfo('broadcaster');
+    const categories = await twitchApi.searchGameCategories('Example Game');
+    await twitchApi.updateChannelInfo('broadcaster', {
+      gameId: 'game-2',
+      title: 'Updated title',
+    });
 
     assert.equal(createdReward.id, 'reward-1');
     assert.equal(updatedReward.cost, 1000);
@@ -457,6 +477,12 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
       userName: 'Streamer',
       viewerCount: 42,
     });
+    assert.deepEqual(channel, {
+      gameId: 'game-1',
+      gameName: 'Example Game',
+      title: 'Live now',
+    });
+    assert.deepEqual(categories, [{ id: 'game-1', name: 'Example Game' }]);
     assert.deepEqual(requests, [
       {
         body: {
@@ -482,6 +508,21 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
         body: null,
         method: 'GET',
         url: 'https://api.example.test/helix/streams?user_id=broadcaster',
+      },
+      {
+        body: null,
+        method: 'GET',
+        url: 'https://api.example.test/helix/channels?broadcaster_id=broadcaster',
+      },
+      {
+        body: null,
+        method: 'GET',
+        url: 'https://api.example.test/helix/search/categories?first=10&query=Example+Game',
+      },
+      {
+        body: { game_id: 'game-2', title: 'Updated title' },
+        method: 'PATCH',
+        url: 'https://api.example.test/helix/channels?broadcaster_id=broadcaster',
       },
     ]);
   } finally {

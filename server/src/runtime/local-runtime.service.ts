@@ -3,8 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { ChatSettingsUpdate } from '../../../shared/contracts/automation';
 import { ChannelPointReward } from '../../../shared/contracts/rewards';
 import {
+  TwitchChannelInfo,
+  TwitchChannelInfoUpdateRequest,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../shared/contracts/twitch-operations';
 import {
@@ -414,6 +417,18 @@ export class LocalRuntimeService {
 
   async getStreamInfo(): Promise<TwitchStreamInfo | null> {
     return this.operations.getStreamInfo();
+  }
+
+  async getChannelInfo(): Promise<TwitchChannelInfo> {
+    return this.operations.getChannelInfo();
+  }
+
+  async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
+    return this.operations.searchGameCategories(query);
+  }
+
+  async updateChannelInfo(updates: TwitchChannelInfoUpdateRequest): Promise<void> {
+    return this.operations.updateChannelInfo(updates);
   }
 
   async getUserIdByLogin(login: string): Promise<string> {

@@ -89,11 +89,11 @@
           <div class="stream-summary">
             <div>
               <span class="field-kicker">TITLE</span>
-              <strong>{{ streamInfo()?.title ?? 'Stream details unavailable' }}</strong>
+              <strong>{{ channelInfo()?.title ?? 'Channel details unavailable' }}</strong>
             </div>
             <div>
               <span class="field-kicker">CATEGORY</span>
-              <strong>{{ streamInfo()?.gameName || 'Not live' }}</strong>
+              <strong>{{ channelInfo()?.gameName || 'Not set' }}</strong>
             </div>
             <div>
               <span class="field-kicker">STARTED</span>
@@ -102,6 +102,57 @@
               }}</strong>
             </div>
           </div>
+          <form class="channel-editor" (ngSubmit)="saveChannelInfo()">
+            <label>
+              Stream title
+              <input
+                name="channelTitle"
+                [(ngModel)]="channelTitle"
+                maxlength="140"
+                required
+                placeholder="What are you streaming?"
+              />
+            </label>
+            <div class="category-field">
+              <label for="category-search">Stream category</label>
+              <div class="category-search">
+                <input
+                  id="category-search"
+                  name="categorySearchQuery"
+                  [(ngModel)]="categorySearchQuery"
+                  maxlength="100"
+                  placeholder="Search Twitch categories"
+                />
+                <button
+                  class="text-button"
+                  type="button"
+                  (click)="searchGameCategories()"
+                  [disabled]="categorySearchBusy()"
+                >
+                  {{ categorySearchBusy() ? 'Searching' : 'Search' }}
+                </button>
+              </div>
+              <select name="selectedGameId" [(ngModel)]="selectedGameId">
+                <option [value]="channelInfo()?.gameId ?? ''">
+                  Current: {{ channelInfo()?.gameName || 'No category' }}
+                </option>
+                @for (category of gameCategories(); track category.id) {
+                  <option [value]="category.id">{{ category.name }}</option>
+                }
+              </select>
+            </div>
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="busy() || !channelTitle.trim()"
+            >
+              Save stream info
+            </button>
+          </form>
+          <p class="category-hint">
+            Category search uses Twitch's game catalog. Stream bitrate isn't available from Twitch's
+            stream API.
+          </p>
           <div class="event-list">
             <div class="subsection-heading">
               <h3>Recent runtime events</h3>

@@ -5,6 +5,9 @@ import { TwitchOAuthConfig } from '../config/runtime-config';
 import { ChatSettingsUpdate } from '../../../shared/contracts/automation';
 import { ChannelPointReward } from '../../../shared/contracts/rewards';
 import {
+  TwitchChannelInfo,
+  TwitchChannelInfoUpdateRequest,
+  TwitchGameCategory,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchStreamInfo,
@@ -158,6 +161,21 @@ interface TwitchStreamListResponse {
     user_login: string;
     user_name: string;
     viewer_count: number;
+  }>;
+}
+
+interface TwitchChannelInformationResponse {
+  data: Array<{
+    game_id: string;
+    game_name: string;
+    title: string;
+  }>;
+}
+
+interface TwitchGameCategorySearchResponse {
+  data: Array<{
+    id: string;
+    name: string;
   }>;
 }
 
@@ -332,6 +350,53 @@ export class TwitchApiClient {
           viewerCount: stream.viewer_count,
         }
       : null;
+  }
+
+  async getChannelInfo(broadcasterId: string): Promise<TwitchChannelInfo> {
+    const parameters = new URLSearchParams({ broadcaster_id: broadcasterId });
+    const response = await this.request<TwitchChannelInformationResponse>(
+      `/channels?${parameters}`,
+    );
+    const channel = response.data[0];
+
+    if (!channel) {
+      throw new TwitchApiError('Twitch did not return broadcaster channel information.', 200);
+    }
+
+    return {
+      gameId: channel.game_id,
+      gameName: channel.game_name,
+      title: channel.title,
+    };
+  }
+
+  async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
+    const parameters = new URLSearchParams({ first: '10', query });
+    const response = await this.request<TwitchGameCategorySearchResponse>(
+      `/search/categories?${parameters}`,
+    );
+
+    return response.data.map((category) => ({ id: category.id, name: category.name }));
+  }
+
+  async updateChannelInfo(
+    broadcasterId: string,
+    updates: TwitchChannelInfoUpdateRequest,
+  ): Promise<void> {
+    const parameters = new URLSearchParams({ broadcaster_id: broadcasterId });
+    const body: { game_id?: string; title?: string } = {};
+
+    if (updates.gameId !== undefined) {
+      body.game_id = updates.gameId;
+    }
+    if (updates.title !== undefined) {
+      body.title = updates.title;
+    }
+
+    await this.request<undefined>(`/channels?${parameters}`, {
+      body: JSON.stringify(body),
+      method: 'PATCH',
+    });
   }
 
   async createEventSubSubscription(

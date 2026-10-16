@@ -42,12 +42,23 @@ test('rejects malformed Twitch operation intents before runtime execution', asyn
       url: '/api/predictions/prediction-1',
       payload: { status: 'RESOLVED' },
     });
+    const invalidChannelUpdate = await app.inject({
+      method: 'PATCH',
+      url: '/api/channel',
+      payload: { gameId: '', title: 'Updated title' },
+    });
+    const invalidGameCategoryQuery = await app.inject({
+      method: 'GET',
+      url: '/api/game-categories',
+    });
 
     assert.equal(invalidTimeout.statusCode, 400);
     assert.equal(invalidChatSettings.statusCode, 400);
     assert.equal(invalidReward.statusCode, 400);
     assert.equal(invalidPoll.statusCode, 400);
     assert.equal(invalidPrediction.statusCode, 400);
+    assert.equal(invalidChannelUpdate.statusCode, 400);
+    assert.equal(invalidGameCategoryQuery.statusCode, 400);
   } finally {
     await app.close();
     await rm(directory, { force: true, recursive: true });

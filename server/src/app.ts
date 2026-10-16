@@ -28,6 +28,7 @@ import { ChatSettingsUpdate } from '../../shared/contracts/automation';
 import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchChannelInfoUpdateRequest,
 } from '../../shared/contracts/twitch-operations';
 import { LocalRuntimeService } from './runtime/local-runtime.service';
 import { TwitchApiError } from './twitch/twitch-api.client';
@@ -292,6 +293,27 @@ export function createApp(): FastifyInstance {
   );
 
   app.get('/api/stream', async () => localRuntime.getStreamInfo());
+
+  app.get('/api/channel', async () => localRuntime.getChannelInfo());
+
+  app.get<{ Querystring: { query?: string } }>('/api/game-categories', async (request, reply) => {
+    const query = request.query.query;
+
+    if (!isText(query, 100)) {
+      return sendInvalidIntent(reply, 'invalid_game_category_query');
+    }
+
+    return localRuntime.searchGameCategories(query);
+  });
+
+  app.patch<{ Body: unknown }>('/api/channel', async (request, reply) => {
+    if (!isChannelInfoUpdate(request.body)) {
+      return sendInvalidIntent(reply, 'invalid_channel_update');
+    }
+
+    await localRuntime.updateChannelInfo(request.body);
+    return reply.code(204).send();
+  });
 
   app.get<{ Params: UserRouteParameters }>('/api/users/by-login/:login', async (request, reply) => {
     if (!/^[a-zA-Z0-9_]{1,25}$/.test(request.params.login)) {
@@ -561,6 +583,17 @@ function sendInvalidIntent(reply: FastifyReply, error: string): FastifyReply {
 
 function isBanIntent(value: unknown): value is { reason?: string; userId: string } {
   return isRecord(value) && isText(value['userId']) && isOptionalText(value['reason'], 500);
+}
+
+function isChannelInfoUpdate(value: unknown): value is TwitchChannelInfoUpdateRequest {
+  return (
+    isRecord(value) &&
+    Object.keys(value).length > 0 &&
+    Object.keys(value).every((key) => key === 'gameId' || key === 'title') &&
+    isOptionalText(value['gameId']) &&
+    isOptionalText(value['title'], 140) &&
+    (value['gameId'] !== undefined || value['title'] !== undefined)
+  );
 }
 
 function isChatSettingsUpdate(value: unknown): value is ChatSettingsUpdate {
