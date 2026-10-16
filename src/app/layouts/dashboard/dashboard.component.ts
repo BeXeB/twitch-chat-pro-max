@@ -3,7 +3,18 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { AutomationAction, AutomationDefinition } from '../../../../shared/contracts/automation';
+import { AutomationDefinition } from '../../../../shared/contracts/automation';
+import {
+  AutomationDraft,
+  EditableActionType,
+  automationFromDraft,
+  describeAction,
+  draftFromAutomation,
+  editableActionTypes,
+  emptyActionDraft,
+  emptyAutomationDraft,
+  validateDraft,
+} from './automation-editor';
 import { CommandDefinition, CommandRole, commandRoles } from '../../../../shared/contracts/command';
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import {
@@ -21,7 +32,6 @@ import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.serv
 
 type DashboardSection = 'overview' | 'automations' | 'commands' | 'rewards' | 'operations';
 type DashboardNotice = { message: string; tone: 'error' | 'success' };
-type BuilderActionType = 'emit-runtime-event' | 'send-chat' | 'show-alert';
 
 @Component({
   selector: 'app-dashboard',
@@ -84,10 +94,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     ),
   );
 
-  automationName = '';
-  automationTrigger: ApplicationEvent['type'] = 'twitch.channel.follow';
-  automationActionType: BuilderActionType = 'show-alert';
-  automationActionValue = 'A new follow';
+  draft: AutomationDraft = emptyAutomationDraft();
+  readonly editableActionTypes = editableActionTypes;
+  readonly describeAction = describeAction;
   commandName = '';
   commandAliases = '';
   commandRole: CommandRole = 'everyone';
@@ -197,52 +206,75 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  async createAutomation(): Promise<void> {
-    const name = this.automationName.trim();
-    const actionValue = this.automationActionValue.trim();
+  async saveAutomationDraft(): Promise<void> {
+    const draft = this.draft;
+    const error = validateDraft(draft);
 
-    if (!name || !actionValue) {
-      this.showNotice('Add an automation name and action value.', 'error');
+    if (error) {
+      this.showNotice(error, 'error');
       return;
     }
 
-    let action: AutomationAction;
-
-    switch (this.automationActionType) {
-      case 'emit-runtime-event':
-        action = {
-          eventType: `automation.${slug(name)}`,
-          payload: { name },
-          type: 'emit-runtime-event',
-        };
-        break;
-      case 'send-chat':
-        action = { message: actionValue, type: 'send-chat' };
-        break;
-      case 'show-alert':
-        action = { message: actionValue, title: name, type: 'show-alert' };
-        break;
-    }
-
-    const definition: AutomationDefinition = {
-      actions: [action],
-      conditions: { type: 'always' },
-      enabled: true,
-      id: crypto.randomUUID(),
-      name,
-      trigger: {
-        eventType: this.automationTrigger,
-        type: 'application-event',
-      },
-      version: 1,
-    };
+    const definition = automationFromDraft(draft, draft.id ?? crypto.randomUUID());
+    const wasEditing = draft.id !== null;
 
     await this.runOperation(async () => {
       await this.runtime.saveAutomation(definition);
-      this.automationName = '';
+      this.draft = emptyAutomationDraft();
       await this.refresh();
-      this.showNotice(`Created automation "${name}".`, 'success');
+      this.showNotice(
+        `${wasEditing ? 'Updated' : 'Created'} automation "${definition.name}".`,
+        'success',
+      );
     });
+  }
+
+  triggerOptions(): ApplicationEvent['type'][] {
+    return this.triggerTypes.includes(this.draft.trigger)
+      ? this.triggerTypes
+      : [this.draft.trigger, ...this.triggerTypes];
+  }
+
+  editAutomation(definition: AutomationDefinition): void {
+    this.draft = draftFromAutomation(definition);
+  }
+
+  cancelAutomationEdit(): void {
+    this.draft = emptyAutomationDraft();
+  }
+
+  addDraftAction(): void {
+    this.draft.actions.push(emptyActionDraft());
+  }
+
+  removeDraftAction(index: number): void {
+    this.draft.actions.splice(index, 1);
+  }
+
+  moveDraftAction(index: number, offset: -1 | 1): void {
+    const target = index + offset;
+    const actions = this.draft.actions;
+
+    if (target >= 0 && target < actions.length) {
+      [actions[index], actions[target]] = [actions[target], actions[index]];
+    }
+  }
+
+  changeDraftActionType(index: number, type: EditableActionType): void {
+    this.draft.actions[index] = emptyActionDraft(type);
+  }
+
+  addDraftCondition(): void {
+    this.draft.opaqueCondition = null;
+    this.draft.conditions.push({ path: '', value: '', valueType: 'string' });
+  }
+
+  removeDraftCondition(index: number): void {
+    this.draft.conditions.splice(index, 1);
+  }
+
+  clearOpaqueCondition(): void {
+    this.draft.opaqueCondition = null;
   }
 
   async toggleAutomation(definition: AutomationDefinition): Promise<void> {

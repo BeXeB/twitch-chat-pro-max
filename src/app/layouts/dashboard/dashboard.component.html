@@ -184,12 +184,15 @@
             </div>
             <span class="count-label">{{ automations().length }} definitions</span>
           </div>
-          <form class="editor-form" (ngSubmit)="createAutomation()">
+          <form class="editor-form" (ngSubmit)="saveAutomationDraft()">
+            <p class="form-heading wide-field">
+              {{ draft.id ? 'Editing automation' : 'New automation' }}
+            </p>
             <label
               >Automation name
               <input
                 name="automationName"
-                [(ngModel)]="automationName"
+                [(ngModel)]="draft.name"
                 maxlength="80"
                 required
                 placeholder="Welcome new followers"
@@ -197,36 +200,300 @@
             </label>
             <label
               >Trigger event
-              <select name="automationTrigger" [(ngModel)]="automationTrigger">
-                @for (eventType of triggerTypes; track eventType) {
+              <select name="automationTrigger" [(ngModel)]="draft.trigger">
+                @for (eventType of triggerOptions(); track eventType) {
                   <option [value]="eventType">{{ eventTypeLabel(eventType) }}</option>
                 }
               </select>
             </label>
             <label
-              >Action
-              <select name="automationActionType" [(ngModel)]="automationActionType">
-                <option value="show-alert">Show alert</option>
-                <option value="send-chat">Send chat message</option>
-                <option value="emit-runtime-event">Emit automation event</option>
-              </select>
-            </label>
-            <label class="wide-field"
-              >{{
-                automationActionType === 'emit-runtime-event'
-                  ? 'Event payload label'
-                  : 'Action text'
-              }}
+              >Cooldown (seconds, 0 = none)
               <input
-                name="automationActionValue"
-                [(ngModel)]="automationActionValue"
-                maxlength="500"
-                required
+                name="automationCooldown"
+                type="number"
+                min="0"
+                [(ngModel)]="draft.cooldownSeconds"
               />
             </label>
-            <button class="primary-button" type="submit" [disabled]="busy()">
-              Create automation
-            </button>
+
+            <div class="form-block wide-row">
+              <div class="subsection-heading">
+                <span class="field-kicker">CONDITIONS</span>
+                <button class="text-button" type="button" (click)="addDraftCondition()">
+                  Add condition
+                </button>
+              </div>
+              @if (draft.opaqueCondition) {
+                <p class="form-hint">
+                  This automation uses a nested condition the form cannot edit. It is kept as is.
+                  <button class="text-button" type="button" (click)="clearOpaqueCondition()">
+                    Replace with form conditions
+                  </button>
+                </p>
+              } @else if (draft.conditions.length === 0) {
+                <p class="form-hint">No conditions: runs for every matching event.</p>
+              } @else {
+                @if (draft.conditions.length > 1) {
+                  <label class="inline-field"
+                    >Run when
+                    <select name="conditionMatch" [(ngModel)]="draft.conditionMatch">
+                      <option value="all">all conditions match</option>
+                      <option value="any">any condition matches</option>
+                    </select>
+                  </label>
+                }
+                @for (condition of draft.conditions; track $index) {
+                  <div class="form-row">
+                    <label
+                      >Payload field
+                      <input
+                        [name]="'conditionPath' + $index"
+                        [(ngModel)]="condition.path"
+                        placeholder="reward.title"
+                      />
+                    </label>
+                    <label
+                      >Equals
+                      <input [name]="'conditionValue' + $index" [(ngModel)]="condition.value" />
+                    </label>
+                    <label
+                      >Type
+                      <select [name]="'conditionType' + $index" [(ngModel)]="condition.valueType">
+                        <option value="string">text</option>
+                        <option value="number">number</option>
+                        <option value="boolean">true/false</option>
+                      </select>
+                    </label>
+                    <button
+                      class="text-button danger-text"
+                      type="button"
+                      (click)="removeDraftCondition($index)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+
+            <div class="form-block wide-row">
+              <label class="check-field"
+                ><input
+                  name="scheduleEnabled"
+                  type="checkbox"
+                  [(ngModel)]="draft.scheduleEnabled"
+                />
+                Also run on a schedule</label
+              >
+              @if (draft.scheduleEnabled) {
+                <div class="form-row">
+                  <label
+                    >Every (seconds)
+                    <input
+                      name="scheduleInterval"
+                      type="number"
+                      min="1"
+                      [(ngModel)]="draft.scheduleIntervalSeconds"
+                    />
+                  </label>
+                  <label class="check-field"
+                    ><input
+                      name="scheduleOnlyLive"
+                      type="checkbox"
+                      [(ngModel)]="draft.scheduleOnlyWhileLive"
+                    />
+                    Only while live</label
+                  >
+                </div>
+              }
+            </div>
+
+            <div class="form-block wide-row">
+              <div class="subsection-heading">
+                <span class="field-kicker">ACTIONS (run in order)</span>
+                <button class="text-button" type="button" (click)="addDraftAction()">
+                  Add action
+                </button>
+              </div>
+              @for (action of draft.actions; track $index) {
+                <div class="action-card">
+                  @if (action.type === 'other') {
+                    <strong>{{ action.original ? describeAction(action.original) : '' }}</strong>
+                    <span class="form-hint">Kept as is; this action type has no form yet.</span>
+                  } @else {
+                    <div class="form-row">
+                      <label
+                        >Type
+                        <select
+                          [name]="'actionType' + $index"
+                          [ngModel]="action.type"
+                          (ngModelChange)="changeDraftActionType($index, $event)"
+                        >
+                          @for (option of editableActionTypes; track option.type) {
+                            <option [value]="option.type">{{ option.label }}</option>
+                          }
+                        </select>
+                      </label>
+                      @switch (action.type) {
+                        @case ('show-alert') {
+                          <label
+                            >Title (optional)
+                            <input
+                              [name]="'actionTitle' + $index"
+                              [(ngModel)]="action.title"
+                              maxlength="100"
+                            />
+                          </label>
+                          <label class="grow"
+                            >Message
+                            <input
+                              [name]="'actionText' + $index"
+                              [(ngModel)]="action.text"
+                              maxlength="500"
+                            />
+                          </label>
+                        }
+                        @case ('send-chat') {
+                          <label class="grow"
+                            >Message
+                            <input
+                              [name]="'actionText' + $index"
+                              [(ngModel)]="action.text"
+                              maxlength="500"
+                            />
+                          </label>
+                        }
+                        @case ('emit-runtime-event') {
+                          <label class="grow"
+                            >Event name (after "automation.")
+                            <input [name]="'actionText' + $index" [(ngModel)]="action.text" />
+                          </label>
+                        }
+                        @case ('delay') {
+                          <label
+                            >Delay (ms)
+                            <input
+                              [name]="'actionNumber' + $index"
+                              type="number"
+                              min="100"
+                              [(ngModel)]="action.number"
+                            />
+                          </label>
+                          <label
+                            >If already waiting
+                            <select
+                              [name]="'actionPolicy' + $index"
+                              [(ngModel)]="action.duplicatePolicy"
+                            >
+                              <option value="replace">replace</option>
+                              <option value="skip">skip</option>
+                              <option value="allow">allow</option>
+                            </select>
+                          </label>
+                        }
+                        @case ('send-discord-webhook') {
+                          <label
+                            >Username (optional)
+                            <input
+                              [name]="'actionTitle' + $index"
+                              [(ngModel)]="action.title"
+                              maxlength="80"
+                            />
+                          </label>
+                          <label class="grow"
+                            >Content
+                            <input
+                              [name]="'actionText' + $index"
+                              [(ngModel)]="action.text"
+                              maxlength="2000"
+                            />
+                          </label>
+                        }
+                        @case ('send-shoutout') {
+                          <label class="grow"
+                            >Target broadcaster ID
+                            <input [name]="'actionText' + $index" [(ngModel)]="action.text" />
+                          </label>
+                        }
+                        @case ('timeout-user') {
+                          <label
+                            >User ID
+                            <input [name]="'actionText' + $index" [(ngModel)]="action.text" />
+                          </label>
+                          <label
+                            >Seconds
+                            <input
+                              [name]="'actionNumber' + $index"
+                              type="number"
+                              min="1"
+                              [(ngModel)]="action.number"
+                            />
+                          </label>
+                          <label
+                            >Reason
+                            <input [name]="'actionReason' + $index" [(ngModel)]="action.reason" />
+                          </label>
+                        }
+                        @case ('ban-user') {
+                          <label
+                            >User ID
+                            <input [name]="'actionText' + $index" [(ngModel)]="action.text" />
+                          </label>
+                          <label
+                            >Reason
+                            <input [name]="'actionReason' + $index" [(ngModel)]="action.reason" />
+                          </label>
+                        }
+                        @case ('unban-user') {
+                          <label class="grow"
+                            >User ID
+                            <input [name]="'actionText' + $index" [(ngModel)]="action.text" />
+                          </label>
+                        }
+                      }
+                    </div>
+                  }
+                  <div class="row-actions">
+                    <button
+                      class="text-button"
+                      type="button"
+                      (click)="moveDraftAction($index, -1)"
+                      [disabled]="$first"
+                    >
+                      Up
+                    </button>
+                    <button
+                      class="text-button"
+                      type="button"
+                      (click)="moveDraftAction($index, 1)"
+                      [disabled]="$last"
+                    >
+                      Down
+                    </button>
+                    <button
+                      class="text-button danger-text"
+                      type="button"
+                      (click)="removeDraftAction($index)"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="form-hint">No actions: the automation will do nothing.</p>
+              }
+            </div>
+
+            <div class="row-actions wide-row">
+              <button class="primary-button" type="submit" [disabled]="busy()">
+                {{ draft.id ? 'Save changes' : 'Create automation' }}
+              </button>
+              @if (draft.id) {
+                <button class="text-button" type="button" (click)="cancelAutomationEdit()">
+                  Cancel
+                </button>
+              }
+            </div>
           </form>
 
           <div class="definition-list">
@@ -247,6 +514,14 @@
                   }}</span>
                 </div>
                 <div class="row-actions">
+                  <button
+                    class="text-button"
+                    type="button"
+                    (click)="editAutomation(automation)"
+                    [disabled]="busy()"
+                  >
+                    Edit
+                  </button>
                   <button
                     class="text-button"
                     type="button"

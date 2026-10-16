@@ -396,6 +396,60 @@ h3 {
 .wide-field {
   grid-column: span 2;
 }
+.wide-row {
+  grid-column: 1 / -1;
+}
+.form-heading {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.form-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+}
+.form-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.form-row label {
+  min-width: 140px;
+}
+.form-row .grow {
+  flex: 1 1 260px;
+}
+.action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #101412;
+}
+.editor-form .check-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.editor-form .check-field input {
+  width: auto;
+}
+.editor-form .inline-field {
+  max-width: 320px;
+}
 .primary-button {
   border-color: var(--accent);
   background: var(--accent);
