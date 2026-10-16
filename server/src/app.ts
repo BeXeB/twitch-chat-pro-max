@@ -28,6 +28,7 @@ import { ChatSettingsUpdate } from '../../shared/contracts/automation';
 import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchChatAnnouncementColor,
   TwitchChannelInfoUpdateRequest,
 } from '../../shared/contracts/twitch-operations';
 import { LocalRuntimeService } from './runtime/local-runtime.service';
@@ -325,12 +326,30 @@ export function createApp(): FastifyInstance {
     return { userId: await localRuntime.getUserIdByLogin(request.params.login) };
   });
 
+  app.post<{ Body: unknown }>('/api/channel/vips', async (request, reply) => {
+    if (!isChannelVipIntent(request.body)) {
+      return sendInvalidIntent(reply, 'invalid_channel_vip');
+    }
+
+    await localRuntime.addChannelVip(request.body.userId);
+    return reply.code(204).send();
+  });
+
   app.post<{ Body: unknown }>('/api/chat/messages', async (request, reply) => {
     if (!isRecord(request.body) || !isText(request.body['message'], 500)) {
       return sendInvalidIntent(reply, 'invalid_chat_message');
     }
 
     await localRuntime.sendChatMessage(request.body['message']);
+    return reply.code(204).send();
+  });
+
+  app.post<{ Body: unknown }>('/api/chat/announcements', async (request, reply) => {
+    if (!isChatAnnouncementIntent(request.body)) {
+      return sendInvalidIntent(reply, 'invalid_chat_announcement');
+    }
+
+    await localRuntime.sendAnnouncement(request.body.message, request.body.color);
     return reply.code(204).send();
   });
 
@@ -591,6 +610,10 @@ function isBanIntent(value: unknown): value is { reason?: string; userId: string
   return isRecord(value) && isText(value['userId']) && isOptionalText(value['reason'], 500);
 }
 
+function isChannelVipIntent(value: unknown): value is { userId: string } {
+  return isRecord(value) && isText(value['userId']);
+}
+
 function isChannelInfoUpdate(value: unknown): value is TwitchChannelInfoUpdateRequest {
   return (
     isRecord(value) &&
@@ -625,6 +648,27 @@ function isChatSettingsUpdate(value: unknown): value is ChatSettingsUpdate {
     isOptionalBoolean(value['slowMode']) &&
     isOptionalIntegerInRange(value['slowModeWaitTimeSeconds'], 1, 120) &&
     isOptionalBoolean(value['subscriberMode'])
+  );
+}
+
+function isChatAnnouncementIntent(
+  value: unknown,
+): value is { color?: TwitchChatAnnouncementColor; message: string } {
+  return (
+    isRecord(value) &&
+    Object.keys(value).every((key) => key === 'color' || key === 'message') &&
+    isText(value['message'], 500) &&
+    (value['color'] === undefined || isTwitchChatAnnouncementColor(value['color']))
+  );
+}
+
+function isTwitchChatAnnouncementColor(value: unknown): value is TwitchChatAnnouncementColor {
+  return (
+    value === 'blue' ||
+    value === 'green' ||
+    value === 'orange' ||
+    value === 'primary' ||
+    value === 'purple'
   );
 }
 

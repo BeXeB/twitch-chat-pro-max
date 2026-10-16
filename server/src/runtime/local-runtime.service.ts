@@ -6,6 +6,7 @@ import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
   TwitchChannelStats,
+  TwitchChatAnnouncementColor,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
@@ -333,6 +334,10 @@ export class LocalRuntimeService {
     this.publishSnapshot();
   }
 
+  async sendAnnouncement(message: string, color?: TwitchChatAnnouncementColor): Promise<void> {
+    return this.operations.sendAnnouncement(message, color);
+  }
+
   async timeoutUser(userId: string, durationSeconds: number, reason?: string): Promise<void> {
     await this.operations.timeoutUser(userId, durationSeconds, reason);
     this.publishManualEvent('manual.user-timed-out', {
@@ -344,6 +349,10 @@ export class LocalRuntimeService {
   async banUser(userId: string, reason?: string): Promise<void> {
     await this.operations.banUser(userId, reason);
     this.publishManualEvent('manual.user-banned', { userId });
+  }
+
+  async addChannelVip(userId: string): Promise<void> {
+    return this.operations.addChannelVip(userId);
   }
 
   async unbanUser(userId: string): Promise<void> {

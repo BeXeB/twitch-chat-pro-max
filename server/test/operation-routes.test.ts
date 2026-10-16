@@ -27,6 +27,16 @@ test('rejects malformed Twitch operation intents before runtime execution', asyn
       url: '/api/chat/settings',
       payload: { slowModeWaitTimeSeconds: 200 },
     });
+    const invalidChannelVip = await app.inject({
+      method: 'POST',
+      url: '/api/channel/vips',
+      payload: { userId: '' },
+    });
+    const invalidAnnouncement = await app.inject({
+      method: 'POST',
+      url: '/api/chat/announcements',
+      payload: { color: 'red', message: 'A valid announcement' },
+    });
     const invalidReward = await app.inject({
       method: 'POST',
       url: '/api/rewards',
@@ -54,6 +64,8 @@ test('rejects malformed Twitch operation intents before runtime execution', asyn
 
     assert.equal(invalidTimeout.statusCode, 400);
     assert.equal(invalidChatSettings.statusCode, 400);
+    assert.equal(invalidChannelVip.statusCode, 400);
+    assert.equal(invalidAnnouncement.statusCode, 400);
     assert.equal(invalidReward.statusCode, 400);
     assert.equal(invalidPoll.statusCode, 400);
     assert.equal(invalidPrediction.statusCode, 400);

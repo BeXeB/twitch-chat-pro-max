@@ -999,6 +999,17 @@
                     [(ngModel)]="followerModeDurationMinutes"
                 /></label>
               }
+              <label class="toggle-row"
+                ><input name="emoteMode" type="checkbox" [(ngModel)]="emoteMode" />Emote-only
+                mode</label
+              >
+              <label class="toggle-row"
+                ><input
+                  name="subscriberMode"
+                  type="checkbox"
+                  [(ngModel)]="subscriberMode"
+                />Subscriber-only mode</label
+              >
               <button
                 class="text-button"
                 type="button"
@@ -1011,10 +1022,11 @@
             <section class="operation-block">
               <h3>Shoutout</h3>
               <label
-                >Target broadcaster ID<input
-                  name="shoutoutTarget"
-                  [(ngModel)]="shoutoutBroadcasterId"
-                  placeholder="Twitch user ID"
+                >Target broadcaster login<input
+                  name="shoutoutTargetLogin"
+                  [(ngModel)]="shoutoutBroadcasterLogin"
+                  maxlength="26"
+                  placeholder="username or @username"
               /></label>
               <button
                 class="text-button"
@@ -1023,6 +1035,106 @@
                 [disabled]="busy()"
               >
                 Send shoutout
+              </button>
+            </section>
+            <section class="operation-block">
+              <h3>Moderation</h3>
+              <label
+                >User login<input
+                  name="moderationLogin"
+                  [(ngModel)]="moderationLogin"
+                  maxlength="26"
+                  placeholder="username or @username"
+              /></label>
+              <label
+                >Reason <span class="optional-label">optional</span
+                ><input
+                  name="moderationReason"
+                  [(ngModel)]="moderationReason"
+                  maxlength="500"
+                  placeholder="Reason shown to the user"
+              /></label>
+              <label
+                >Timeout duration (seconds)<input
+                  name="moderationTimeoutSeconds"
+                  type="number"
+                  min="1"
+                  max="1209600"
+                  [(ngModel)]="moderationTimeoutSeconds"
+              /></label>
+              <div class="row-actions">
+                <button
+                  class="text-button"
+                  type="button"
+                  (click)="timeoutUser()"
+                  [disabled]="busy()"
+                >
+                  Timeout
+                </button>
+                <button
+                  class="text-button danger-text"
+                  type="button"
+                  (click)="banUser()"
+                  [disabled]="busy()"
+                >
+                  Ban
+                </button>
+                <button class="text-button" type="button" (click)="unbanUser()" [disabled]="busy()">
+                  Unban
+                </button>
+                <button
+                  class="text-button"
+                  type="button"
+                  (click)="addChannelVip()"
+                  [disabled]="busy()"
+                >
+                  Add VIP
+                </button>
+              </div>
+            </section>
+            <section class="operation-block">
+              <h3>Delete chat message</h3>
+              <label
+                >Message ID<input
+                  name="chatMessageId"
+                  [(ngModel)]="chatMessageId"
+                  placeholder="Twitch chat message ID"
+              /></label>
+              <button
+                class="text-button danger-text"
+                type="button"
+                (click)="deleteChatMessage()"
+                [disabled]="busy()"
+              >
+                Delete message
+              </button>
+            </section>
+            <section class="operation-block">
+              <h3>Announcement</h3>
+              <label
+                >Message<textarea
+                  name="announcementMessage"
+                  [(ngModel)]="announcementMessage"
+                  maxlength="500"
+                  rows="3"
+                ></textarea>
+              </label>
+              <label
+                >Color<select name="announcementColor" [(ngModel)]="announcementColor">
+                  <option value="primary">Primary</option>
+                  <option value="blue">Blue</option>
+                  <option value="green">Green</option>
+                  <option value="orange">Orange</option>
+                  <option value="purple">Purple</option>
+                </select>
+              </label>
+              <button
+                class="text-button"
+                type="button"
+                (click)="sendAnnouncement()"
+                [disabled]="busy()"
+              >
+                Send announcement
               </button>
             </section>
             <section class="operation-block">

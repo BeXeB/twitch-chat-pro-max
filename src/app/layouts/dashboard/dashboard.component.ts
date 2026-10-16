@@ -30,6 +30,7 @@ import {
   TwitchPredictionInfo,
   TwitchChannelInfo,
   TwitchChannelStats,
+  TwitchChatAnnouncementColor,
   TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
@@ -149,7 +150,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   rewardTitle = '';
   rewardCost = 1000;
   chatMessage = '';
-  shoutoutBroadcasterId = '';
+  announcementMessage = '';
+  announcementColor: TwitchChatAnnouncementColor = 'primary';
+  chatMessageId = '';
+  moderationLogin = '';
+  moderationReason = '';
+  moderationTimeoutSeconds = 600;
+  shoutoutBroadcasterLogin = '';
+  emoteMode = false;
+  subscriberMode = false;
   slowMode = false;
   slowModeWaitTimeSeconds = 30;
   followerMode = false;
@@ -661,31 +670,107 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  async sendAnnouncement(): Promise<void> {
+    const message = this.announcementMessage.trim();
+
+    if (!message || message.length > 500) {
+      this.showNotice('Enter an announcement message of 1 to 500 characters.', 'error');
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.sendAnnouncement(message, this.announcementColor);
+      this.announcementMessage = '';
+      this.showNotice('Announcement sent.', 'success');
+    });
+  }
+
+  async timeoutUser(): Promise<void> {
+    const durationSeconds = Number(this.moderationTimeoutSeconds);
+
+    if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 1209600) {
+      this.showNotice('Timeout duration must be between 1 and 1,209,600 seconds.', 'error');
+      return;
+    }
+
+    const reason = this.moderationReason.trim() || undefined;
+    await this.runForTwitchLogin(this.moderationLogin, async (userId, login) => {
+      await this.runtime.timeoutUser(userId, durationSeconds, reason);
+      this.showNotice(`Timed out @${login} for ${durationSeconds} seconds.`, 'success');
+    });
+  }
+
+  async banUser(): Promise<void> {
+    const login = normalizeTwitchLogin(this.moderationLogin);
+
+    if (!login) {
+      this.showNotice('Enter a valid Twitch login name.', 'error');
+      return;
+    }
+    if (!window.confirm(`Ban @${login} from the channel?`)) {
+      return;
+    }
+
+    const reason = this.moderationReason.trim() || undefined;
+    await this.runForTwitchLogin(login, async (userId) => {
+      await this.runtime.banUser(userId, reason);
+      this.showNotice(`Banned @${login}.`, 'success');
+    });
+  }
+
+  async unbanUser(): Promise<void> {
+    await this.runForTwitchLogin(this.moderationLogin, async (userId, login) => {
+      await this.runtime.unbanUser(userId);
+      this.showNotice(`Unbanned @${login}.`, 'success');
+    });
+  }
+
+  async addChannelVip(): Promise<void> {
+    await this.runForTwitchLogin(this.moderationLogin, async (userId, login) => {
+      await this.runtime.addChannelVip(userId);
+      this.showNotice(`Added @${login} as a VIP.`, 'success');
+    });
+  }
+
+  async deleteChatMessage(): Promise<void> {
+    const messageId = this.chatMessageId.trim();
+
+    if (!messageId) {
+      this.showNotice('Enter the chat message ID to delete.', 'error');
+      return;
+    }
+    if (!window.confirm('Delete this chat message?')) {
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.deleteChatMessage(messageId);
+      this.chatMessageId = '';
+      this.showNotice('Chat message deleted.', 'success');
+    });
+  }
+
   async saveChatSettings(): Promise<void> {
     await this.runOperation(async () => {
       await this.runtime.updateChatSettings({
+        emoteMode: this.emoteMode,
         followerMode: this.followerMode,
         ...(this.followerMode
           ? { followerModeDurationMinutes: Number(this.followerModeDurationMinutes) }
           : {}),
         slowMode: this.slowMode,
         ...(this.slowMode ? { slowModeWaitTimeSeconds: Number(this.slowModeWaitTimeSeconds) } : {}),
+        subscriberMode: this.subscriberMode,
       });
       this.showNotice('Chat settings updated.', 'success');
     });
   }
 
   async sendShoutout(): Promise<void> {
-    const targetId = this.shoutoutBroadcasterId.trim();
-
-    if (!targetId) {
-      return;
-    }
-
-    await this.runOperation(async () => {
-      await this.runtime.sendShoutout(targetId);
-      this.shoutoutBroadcasterId = '';
-      this.showNotice('Shoutout sent.', 'success');
+    await this.runForTwitchLogin(this.shoutoutBroadcasterLogin, async (userId, login) => {
+      await this.runtime.sendShoutout(userId);
+      this.shoutoutBroadcasterLogin = '';
+      this.showNotice(`Shoutout sent to @${login}.`, 'success');
     });
   }
 
@@ -816,6 +901,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async runForTwitchLogin(
+    input: string,
+    operation: (userId: string, login: string) => Promise<void>,
+  ): Promise<void> {
+    const login = normalizeTwitchLogin(input);
+
+    if (!login) {
+      this.showNotice('Enter a valid Twitch login name.', 'error');
+      return;
+    }
+
+    await this.runOperation(async () => {
+      const userId = await this.runtime.getUserIdByLogin(login);
+      await operation(userId, login);
+    });
+  }
+
   private async loadOperations(): Promise<void> {
     const [pollsResult, predictionsResult] = await Promise.allSettled([
       this.runtime.getPolls(),
@@ -927,6 +1029,12 @@ function errorMessage(error: unknown): string {
   }
 
   return 'The operation failed.';
+}
+
+function normalizeTwitchLogin(input: string): string | null {
+  const login = input.trim().replace(/^@/, '');
+
+  return /^[a-zA-Z0-9_]{1,25}$/.test(login) ? login : null;
 }
 
 function formatDuration(milliseconds: number): string {

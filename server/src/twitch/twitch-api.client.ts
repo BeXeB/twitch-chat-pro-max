@@ -7,6 +7,7 @@ import { ChannelPointReward } from '../../../shared/contracts/rewards';
 import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
+  TwitchChatAnnouncementColor,
   TwitchGameCategory,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
@@ -88,6 +89,13 @@ export interface TwitchChatSettingsRequest {
   broadcasterId: string;
   moderatorId: string;
   settings: ChatSettingsUpdate;
+}
+
+export interface TwitchChatAnnouncementRequest {
+  broadcasterId: string;
+  color?: TwitchChatAnnouncementColor;
+  message: string;
+  moderatorId: string;
 }
 
 export interface TwitchShoutoutRequest {
@@ -611,6 +619,25 @@ export class TwitchApiClient {
     }
 
     return result.message_id;
+  }
+
+  async sendAnnouncement({
+    broadcasterId,
+    color,
+    message,
+    moderatorId,
+  }: TwitchChatAnnouncementRequest): Promise<void> {
+    const parameters = createModerationParameters(broadcasterId, moderatorId);
+    const body: { color?: TwitchChatAnnouncementColor; message: string } = { message };
+
+    if (color !== undefined) {
+      body.color = color;
+    }
+
+    await this.request<undefined>(`/chat/announcements?${parameters}`, {
+      body: JSON.stringify(body),
+      method: 'POST',
+    });
   }
 
   async sendShoutout({

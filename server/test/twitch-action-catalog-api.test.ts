@@ -166,12 +166,23 @@ test('sends the complete action catalog through typed Helix requests', async () 
     await twitchApi.updateChatSettings({
       broadcasterId: 'broadcaster',
       moderatorId: 'moderator',
-      settings: { slowMode: true, slowModeWaitTimeSeconds: 15 },
+      settings: {
+        emoteMode: true,
+        slowMode: true,
+        slowModeWaitTimeSeconds: 15,
+        subscriberMode: true,
+      },
     });
     await twitchApi.sendShoutout({
       fromBroadcasterId: 'broadcaster',
       moderatorId: 'moderator',
       targetBroadcasterId: 'target',
+    });
+    await twitchApi.sendAnnouncement({
+      broadcasterId: 'broadcaster',
+      color: 'purple',
+      message: 'Stream starts soon!',
+      moderatorId: 'moderator',
     });
     await twitchApi.updateRedemptionStatus({
       broadcasterId: 'broadcaster',
@@ -231,7 +242,12 @@ test('sends the complete action catalog through typed Helix requests', async () 
         url: 'https://api.example.test/helix/moderation/chat?broadcaster_id=broadcaster&moderator_id=moderator&message_id=message',
       },
       {
-        body: { slow_mode: true, slow_mode_wait_time: 15 },
+        body: {
+          emote_mode: true,
+          slow_mode: true,
+          slow_mode_wait_time: 15,
+          subscriber_mode: true,
+        },
         method: 'PATCH',
         url: 'https://api.example.test/helix/chat/settings?broadcaster_id=broadcaster&moderator_id=moderator',
       },
@@ -239,6 +255,11 @@ test('sends the complete action catalog through typed Helix requests', async () 
         body: null,
         method: 'POST',
         url: 'https://api.example.test/helix/chat/shoutouts?from_broadcaster_id=broadcaster&moderator_id=moderator&to_broadcaster_id=target',
+      },
+      {
+        body: { color: 'purple', message: 'Stream starts soon!' },
+        method: 'POST',
+        url: 'https://api.example.test/helix/chat/announcements?broadcaster_id=broadcaster&moderator_id=moderator',
       },
       {
         body: { status: 'FULFILLED' },

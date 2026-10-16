@@ -3,6 +3,7 @@ import { ChannelPointReward } from '../../../../shared/contracts/rewards';
 import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
+  TwitchChatAnnouncementColor,
   TwitchChannelStats,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
@@ -200,6 +201,17 @@ export class TwitchOperationsService {
       broadcasterId: broadcaster.id,
       message,
       senderId: broadcaster.id,
+    });
+  }
+
+  async sendAnnouncement(message: string, color?: TwitchChatAnnouncementColor): Promise<void> {
+    const { api, broadcaster } = this.getContext();
+
+    await api.sendAnnouncement({
+      broadcasterId: broadcaster.id,
+      color,
+      message,
+      moderatorId: broadcaster.id,
     });
   }
 

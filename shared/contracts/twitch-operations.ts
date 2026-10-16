@@ -56,6 +56,8 @@ export interface TwitchChannelStats {
   subscriberCount: number | null;
 }
 
+export type TwitchChatAnnouncementColor = 'blue' | 'green' | 'orange' | 'primary' | 'purple';
+
 export interface TwitchPollInfo {
   choices: Array<{ id: string; title: string }>;
   id: string;

@@ -17,6 +17,7 @@ import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
   TwitchChannelStats,
+  TwitchChatAnnouncementColor,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
@@ -140,11 +141,21 @@ export class LocalRuntimeClient {
     return true;
   }
 
+  async sendAnnouncement(message: string, color?: TwitchChatAnnouncementColor): Promise<boolean> {
+    await firstValueFrom(this.http.post<void>('/api/chat/announcements', { message, color }));
+    return true;
+  }
+
   async getUserIdByLogin(login: string): Promise<string> {
     const result = await firstValueFrom(
       this.http.get<{ userId: string }>(`/api/users/by-login/${encodeURIComponent(login)}`),
     );
     return result.userId;
+  }
+
+  async addChannelVip(userId: string): Promise<boolean> {
+    await firstValueFrom(this.http.post<void>('/api/channel/vips', { userId }));
+    return true;
   }
 
   async timeoutUser(userId: string, durationSeconds: number, reason?: string): Promise<boolean> {
