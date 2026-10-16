@@ -3,6 +3,7 @@ import { ChannelPointReward } from '../../../../shared/contracts/rewards';
 import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
+  TwitchChannelStats,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
@@ -105,6 +106,19 @@ export class TwitchOperationsService {
   async getChannelInfo(): Promise<TwitchChannelInfo> {
     const { api, broadcaster } = this.getContext();
     return api.getChannelInfo(broadcaster.id);
+  }
+
+  async getChannelStats(): Promise<TwitchChannelStats> {
+    const { api, broadcaster } = this.getContext();
+    const [followers, subscribers] = await Promise.allSettled([
+      api.getFollowerCount(broadcaster.id),
+      api.getSubscriberCount(broadcaster.id),
+    ]);
+
+    return {
+      followerCount: followers.status === 'fulfilled' ? followers.value : null,
+      subscriberCount: subscribers.status === 'fulfilled' ? subscribers.value : null,
+    };
   }
 
   async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {

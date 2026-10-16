@@ -74,12 +74,16 @@
               <strong>{{ streamInfo()?.viewerCount ?? '—' }}</strong>
             </div>
             <div class="metric">
-              <span>CHAT BUFFER</span>
-              <strong>{{ viewState().chatMessages.length }}</strong>
+              <span>UPTIME</span>
+              <strong>{{ uptime() ?? '—' }}</strong>
             </div>
             <div class="metric">
-              <span>ALERT BUFFER</span>
-              <strong>{{ viewState().alerts.length }}</strong>
+              <span>FOLLOWERS</span>
+              <strong>{{ channelStats()?.followerCount ?? '—' }}</strong>
+            </div>
+            <div class="metric">
+              <span>SUBSCRIBERS</span>
+              <strong>{{ channelStats()?.subscriberCount ?? '—' }}</strong>
             </div>
             <div class="metric">
               <span>EVENTS</span>

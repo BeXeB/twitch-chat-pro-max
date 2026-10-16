@@ -370,6 +370,20 @@ export class TwitchApiClient {
     };
   }
 
+  async getFollowerCount(broadcasterId: string): Promise<number> {
+    const parameters = new URLSearchParams({ broadcaster_id: broadcasterId, first: '1' });
+    const response = await this.request<{ total: number }>(`/channels/followers?${parameters}`);
+
+    return response.total;
+  }
+
+  async getSubscriberCount(broadcasterId: string): Promise<number> {
+    const parameters = new URLSearchParams({ broadcaster_id: broadcasterId, first: '1' });
+    const response = await this.request<{ total: number }>(`/subscriptions?${parameters}`);
+
+    return response.total;
+  }
+
   async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
     const parameters = new URLSearchParams({ first: '10', query });
     const response = await this.request<TwitchGameCategorySearchResponse>(

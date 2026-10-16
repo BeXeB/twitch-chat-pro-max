@@ -296,6 +296,8 @@ export function createApp(): FastifyInstance {
 
   app.get('/api/channel', async () => localRuntime.getChannelInfo());
 
+  app.get('/api/channel/stats', async () => localRuntime.getChannelStats());
+
   app.get<{ Querystring: { query?: string } }>('/api/game-categories', async (request, reply) => {
     const query = request.query.query;
 

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -13,6 +13,7 @@ import {
 import {
   CustomRewardCreateRequest,
   TwitchChannelInfo,
+  TwitchChannelStats,
   TwitchGameCategory,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
@@ -29,7 +30,7 @@ type BuilderActionType = 'emit-runtime-event' | 'send-chat' | 'show-alert';
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   readonly sections: DashboardSection[] = [
     'overview',
     'automations',
@@ -43,6 +44,13 @@ export class DashboardComponent implements OnInit {
   readonly rewards = signal<Awaited<ReturnType<LocalRuntimeClient['getCustomRewards']>>>([]);
   readonly rewardMappings = signal<RewardAutomationMapping[]>([]);
   readonly streamInfo = signal<TwitchStreamInfo | null>(null);
+  readonly channelStats = signal<TwitchChannelStats | null>(null);
+  readonly now = signal(Date.now());
+  readonly uptime = computed(() => {
+    const startedAt = this.streamInfo()?.startedAt;
+
+    return startedAt ? formatDuration(this.now() - Date.parse(startedAt)) : null;
+  });
   readonly channelInfo = signal<TwitchChannelInfo | null>(null);
   readonly gameCategories = signal<TwitchGameCategory[]>([]);
   readonly loading = signal(false);
@@ -108,10 +116,42 @@ export class DashboardComponent implements OnInit {
   categorySearchQuery = '';
   selectedGameId = '';
 
+  private livePollTimer: ReturnType<typeof setInterval> | null = null;
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(readonly runtime: LocalRuntimeClient) {}
 
   ngOnInit(): void {
     void this.refresh();
+    this.clockTimer = setInterval(() => this.now.set(Date.now()), 1000);
+    this.livePollTimer = setInterval(() => {
+      if (!document.hidden && this.activeSection() === 'overview') {
+        void this.refreshLive();
+      }
+    }, 30000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer);
+    }
+    if (this.livePollTimer) {
+      clearInterval(this.livePollTimer);
+    }
+  }
+
+  async refreshLive(): Promise<void> {
+    const [streamInfo, channelStats] = await Promise.all([
+      this.runtime.getStreamInfo().catch(() => undefined),
+      this.runtime.getChannelStats().catch(() => undefined),
+    ]);
+
+    if (streamInfo !== undefined) {
+      this.streamInfo.set(streamInfo);
+    }
+    if (channelStats !== undefined) {
+      this.channelStats.set(channelStats);
+    }
   }
 
   async refresh(): Promise<void> {
@@ -139,6 +179,7 @@ export class DashboardComponent implements OnInit {
       this.rewardMappings.set(mappings);
       this.streamInfo.set(streamInfo);
       this.channelInfo.set(channelInfo);
+      void this.refreshLive();
       if (channelInfo) {
         this.channelTitle = channelInfo.title;
         this.categorySearchQuery = channelInfo.gameName;
@@ -504,6 +545,16 @@ export class DashboardComponent implements OnInit {
   private showNotice(message: string, tone: DashboardNotice['tone']): void {
     this.notice.set({ message, tone });
   }
+}
+
+function formatDuration(milliseconds: number): string {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (value: number): string => String(value).padStart(2, '0');
+
+  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 }
 
 function slug(value: string): string {

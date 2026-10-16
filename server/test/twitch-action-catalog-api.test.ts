@@ -433,6 +433,16 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
       return jsonResponse({ data: [{ id: 'game-1', name: 'Example Game' }] });
     }
 
+    if (
+      url === 'https://api.example.test/helix/channels/followers?broadcaster_id=broadcaster&first=1'
+    ) {
+      return jsonResponse({ data: [], total: 1234 });
+    }
+
+    if (url === 'https://api.example.test/helix/subscriptions?broadcaster_id=broadcaster&first=1') {
+      return jsonResponse({ data: [], points: 10, total: 56 });
+    }
+
     throw new Error(`Unexpected request: ${url}`);
   }) as typeof fetch;
 
@@ -457,6 +467,8 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
     const stream = await twitchApi.getStreamInfo('broadcaster');
     const channel = await twitchApi.getChannelInfo('broadcaster');
     const categories = await twitchApi.searchGameCategories('Example Game');
+    const followerCount = await twitchApi.getFollowerCount('broadcaster');
+    const subscriberCount = await twitchApi.getSubscriberCount('broadcaster');
     await twitchApi.updateChannelInfo('broadcaster', {
       gameId: 'game-2',
       title: 'Updated title',
@@ -483,6 +495,8 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
       title: 'Live now',
     });
     assert.deepEqual(categories, [{ id: 'game-1', name: 'Example Game' }]);
+    assert.equal(followerCount, 1234);
+    assert.equal(subscriberCount, 56);
     assert.deepEqual(requests, [
       {
         body: {
@@ -518,6 +532,16 @@ test('manages custom rewards and reads stream metadata through Helix', async () 
         body: null,
         method: 'GET',
         url: 'https://api.example.test/helix/search/categories?first=10&query=Example+Game',
+      },
+      {
+        body: null,
+        method: 'GET',
+        url: 'https://api.example.test/helix/channels/followers?broadcaster_id=broadcaster&first=1',
+      },
+      {
+        body: null,
+        method: 'GET',
+        url: 'https://api.example.test/helix/subscriptions?broadcaster_id=broadcaster&first=1',
       },
       {
         body: { game_id: 'game-2', title: 'Updated title' },

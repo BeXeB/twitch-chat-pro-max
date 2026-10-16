@@ -50,3 +50,8 @@ export interface TwitchChannelInfoUpdateRequest {
   gameId?: string;
   title?: string;
 }
+
+export interface TwitchChannelStats {
+  followerCount: number | null;
+  subscriberCount: number | null;
+}

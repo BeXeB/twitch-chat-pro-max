@@ -5,6 +5,7 @@ import { ChannelPointReward } from '../../../shared/contracts/rewards';
 import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
+  TwitchChannelStats,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
@@ -421,6 +422,10 @@ export class LocalRuntimeService {
 
   async getChannelInfo(): Promise<TwitchChannelInfo> {
     return this.operations.getChannelInfo();
+  }
+
+  async getChannelStats(): Promise<TwitchChannelStats> {
+    return this.operations.getChannelStats();
   }
 
   async searchGameCategories(query: string): Promise<TwitchGameCategory[]> {

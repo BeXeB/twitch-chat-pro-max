@@ -16,6 +16,7 @@ import { ChannelPointReward, RewardAutomationMapping } from '../../../../shared/
 import {
   TwitchChannelInfo,
   TwitchChannelInfoUpdateRequest,
+  TwitchChannelStats,
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
@@ -275,6 +276,10 @@ export class LocalRuntimeClient {
 
   getChannelInfo(): Promise<TwitchChannelInfo> {
     return firstValueFrom(this.http.get<TwitchChannelInfo>('/api/channel'));
+  }
+
+  getChannelStats(): Promise<TwitchChannelStats> {
+    return firstValueFrom(this.http.get<TwitchChannelStats>('/api/channel/stats'));
   }
 
   searchGameCategories(query: string): Promise<TwitchGameCategory[]> {
