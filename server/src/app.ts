@@ -458,6 +458,8 @@ export function createApp(): FastifyInstance {
     return reply.code(201).send({ id: pollId });
   });
 
+  app.get('/api/polls', async () => localRuntime.getPolls());
+
   app.patch<{ Body: unknown; Params: ResourceRouteParameters }>(
     '/api/polls/:resourceId',
     async (request, reply) => {
@@ -482,6 +484,8 @@ export function createApp(): FastifyInstance {
     );
     return reply.code(201).send({ id: predictionId });
   });
+
+  app.get('/api/predictions', async () => localRuntime.getPredictions());
 
   app.patch<{ Body: unknown; Params: ResourceRouteParameters }>(
     '/api/predictions/:resourceId',

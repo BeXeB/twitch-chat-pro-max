@@ -11,6 +11,8 @@ import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchStreamInfo,
+  TwitchPollInfo,
+  TwitchPredictionInfo,
 } from '../../../shared/contracts/twitch-operations';
 
 interface TwitchHelixUserResponse {
@@ -19,6 +21,27 @@ interface TwitchHelixUserResponse {
     id: string;
     login: string;
     profile_image_url: string;
+  }>;
+}
+
+interface TwitchPollListResponse {
+  data: Array<{
+    choices: Array<{ id: string; title: string }>;
+    id: string;
+    started_at: string;
+    status: TwitchPollInfo['status'];
+    title: string;
+  }>;
+}
+
+interface TwitchPredictionListResponse {
+  data: Array<{
+    created_at: string;
+    id: string;
+    locked_at: string | null;
+    outcomes: Array<{ id: string; title: string }>;
+    status: TwitchPredictionInfo['status'];
+    title: string;
   }>;
 }
 
@@ -526,6 +549,39 @@ export class TwitchApiClient {
       body: JSON.stringify({ status }),
       method: 'PATCH',
     });
+  }
+
+  async getPolls(broadcasterId: string): Promise<TwitchPollInfo[]> {
+    const parameters = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      first: '20',
+    });
+    const response = await this.request<TwitchPollListResponse>(`/polls?${parameters}`);
+
+    return response.data.map((poll) => ({
+      choices: poll.choices.map(({ id, title }) => ({ id, title })),
+      id: poll.id,
+      startedAt: poll.started_at,
+      status: poll.status,
+      title: poll.title,
+    }));
+  }
+
+  async getPredictions(broadcasterId: string): Promise<TwitchPredictionInfo[]> {
+    const parameters = new URLSearchParams({
+      broadcaster_id: broadcasterId,
+      first: '20',
+    });
+    const response = await this.request<TwitchPredictionListResponse>(`/predictions?${parameters}`);
+
+    return response.data.map((prediction) => ({
+      createdAt: prediction.created_at,
+      id: prediction.id,
+      lockedAt: prediction.locked_at,
+      outcomes: prediction.outcomes.map(({ id, title }) => ({ id, title })),
+      status: prediction.status,
+      title: prediction.title,
+    }));
   }
 
   async sendChatMessage({

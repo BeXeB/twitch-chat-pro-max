@@ -8,6 +8,8 @@ import {
   CustomRewardUpdateRequest,
   TwitchGameCategory,
   TwitchStreamInfo,
+  TwitchPollInfo,
+  TwitchPredictionInfo,
 } from '../../../../shared/contracts/twitch-operations';
 import { TwitchApiClient, TwitchCurrentUser } from '../../twitch/twitch-api.client';
 
@@ -96,6 +98,16 @@ export class TwitchOperationsService {
   async endPoll(pollId: string, status: 'ARCHIVED' | 'TERMINATED'): Promise<void> {
     const { api, broadcaster } = this.getContext();
     await api.endPoll({ broadcasterId: broadcaster.id, pollId, status });
+  }
+
+  async getPolls(): Promise<TwitchPollInfo[]> {
+    const { api, broadcaster } = this.getContext();
+    return api.getPolls(broadcaster.id);
+  }
+
+  async getPredictions(): Promise<TwitchPredictionInfo[]> {
+    const { api, broadcaster } = this.getContext();
+    return api.getPredictions(broadcaster.id);
   }
 
   async getStreamInfo(): Promise<TwitchStreamInfo | null> {

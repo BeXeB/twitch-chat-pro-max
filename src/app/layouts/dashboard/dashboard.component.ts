@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -25,6 +26,8 @@ import {
 import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
+  TwitchPollInfo,
+  TwitchPredictionInfo,
   TwitchChannelInfo,
   TwitchChannelStats,
   TwitchGameCategory,
@@ -33,7 +36,12 @@ import {
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
 
 type DashboardSection = 'overview' | 'automations' | 'commands' | 'rewards' | 'operations';
-type DashboardNotice = { message: string; tone: 'error' | 'success' };
+type DataSection = DashboardSection;
+type DashboardNotice = {
+  message: string;
+  reconnectRequired?: boolean;
+  tone: 'error' | 'success';
+};
 interface RewardEditDraft {
   cost: number;
   globalCooldownSeconds: number;
@@ -68,6 +76,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly rewardMappings = signal<RewardAutomationMapping[]>([]);
   readonly streamInfo = signal<TwitchStreamInfo | null>(null);
   readonly channelStats = signal<TwitchChannelStats | null>(null);
+  readonly polls = signal<TwitchPollInfo[]>([]);
+  readonly predictions = signal<TwitchPredictionInfo[]>([]);
+  readonly predictionWinningOutcomeIds = signal<Record<string, string>>({});
   readonly now = signal(Date.now());
   readonly uptime = computed(() => {
     const startedAt = this.streamInfo()?.startedAt;
@@ -77,6 +88,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly channelInfo = signal<TwitchChannelInfo | null>(null);
   readonly gameCategories = signal<TwitchGameCategory[]>([]);
   readonly loading = signal(false);
+  readonly sectionLoading = signal<Record<DataSection, boolean>>({
+    overview: false,
+    automations: false,
+    commands: false,
+    rewards: false,
+    operations: false,
+  });
   readonly busy = signal(false);
   readonly categorySearchBusy = signal(false);
   readonly notice = signal<DashboardNotice | null>(null);
@@ -104,6 +122,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       (automation) =>
         automation.trigger.eventType ===
         'twitch.channel.channel_points_custom_reward_redemption.add',
+    ),
+  );
+  readonly activePolls = computed(() => this.polls().filter((poll) => poll.status === 'ACTIVE'));
+  readonly activePredictions = computed(() =>
+    this.predictions().filter(
+      (prediction) => prediction.status === 'ACTIVE' || prediction.status === 'LOCKED',
     ),
   );
 
@@ -165,57 +189,80 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async refreshLive(): Promise<void> {
-    const [streamInfo, channelStats] = await Promise.all([
-      this.runtime.getStreamInfo().catch(() => undefined),
-      this.runtime.getChannelStats().catch(() => undefined),
+    const results = await Promise.allSettled([
+      this.runtime.getStreamInfo(),
+      this.runtime.getChannelStats(),
     ]);
 
-    if (streamInfo !== undefined) {
-      this.streamInfo.set(streamInfo);
+    if (results[0].status === 'fulfilled') {
+      this.streamInfo.set(results[0].value);
+    } else if (isAuthorizationError(results[0].reason)) {
+      this.showError(results[0].reason);
     }
-    if (channelStats !== undefined) {
-      this.channelStats.set(channelStats);
+    if (results[1].status === 'fulfilled') {
+      this.channelStats.set(results[1].value);
+    } else if (isAuthorizationError(results[1].reason)) {
+      this.showError(results[1].reason);
     }
   }
 
   async refresh(): Promise<void> {
     this.loading.set(true);
+    const errors: unknown[] = [];
+    this.sectionLoading.set({
+      overview: true,
+      automations: true,
+      commands: true,
+      rewards: true,
+      operations: true,
+    });
 
-    let channelError: unknown = null;
+    const loadSection = async (section: DataSection, load: () => Promise<void>): Promise<void> => {
+      try {
+        await load();
+      } catch (error) {
+        errors.push(error);
+      } finally {
+        this.sectionLoading.update((states) => ({ ...states, [section]: false }));
+      }
+    };
 
     try {
-      const [automations, commands, rewards, mappings, streamInfo, channelInfo] = await Promise.all(
-        [
-          this.runtime.getAutomations(),
-          this.runtime.getCommands(),
-          this.runtime.getCustomRewards(),
-          this.runtime.getRewardMappings(),
-          this.runtime.getStreamInfo().catch(() => null),
-          this.runtime.getChannelInfo().catch((error: unknown) => {
-            channelError = error;
-            return null;
-          }),
-        ],
-      );
-      this.automations.set(automations);
-      this.commands.set(commands);
-      this.rewards.set(rewards);
-      this.rewardMappings.set(mappings);
-      this.streamInfo.set(streamInfo);
-      this.channelInfo.set(channelInfo);
-      void this.refreshLive();
-      if (channelInfo) {
-        this.channelTitle = channelInfo.title;
-        this.categorySearchQuery = channelInfo.gameName;
-        this.selectedGameId = channelInfo.gameId;
-      }
-      if (channelError) {
-        this.showError(channelError);
+      await Promise.all([
+        loadSection('overview', async () => {
+          const [streamInfo, channelInfo, channelStats] = await Promise.all([
+            this.runtime.getStreamInfo(),
+            this.runtime.getChannelInfo(),
+            this.runtime.getChannelStats(),
+          ]);
+          this.streamInfo.set(streamInfo);
+          this.channelStats.set(channelStats);
+          this.channelInfo.set(channelInfo);
+          this.channelTitle = channelInfo.title;
+          this.categorySearchQuery = channelInfo.gameName;
+          this.selectedGameId = channelInfo.gameId;
+        }),
+        loadSection('automations', async () => {
+          this.automations.set(await this.runtime.getAutomations());
+        }),
+        loadSection('commands', async () => {
+          this.commands.set(await this.runtime.getCommands());
+        }),
+        loadSection('rewards', async () => {
+          const [rewards, mappings] = await Promise.all([
+            this.runtime.getCustomRewards(),
+            this.runtime.getRewardMappings(),
+          ]);
+          this.rewards.set(rewards);
+          this.rewardMappings.set(mappings);
+        }),
+        loadSection('operations', () => this.loadOperations()),
+      ]);
+      if (errors.length > 0) {
+        this.showError(errors[0]);
       } else {
         this.notice.set(null);
       }
-    } catch (error) {
-      this.showError(error);
     } finally {
       this.loading.set(false);
     }
@@ -307,6 +354,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async deleteAutomation(definition: AutomationDefinition): Promise<void> {
+    if (!window.confirm(`Delete automation "${definition.name}"? This cannot be undone.`)) {
+      return;
+    }
+
     await this.runOperation(async () => {
       await this.runtime.deleteAutomation(definition.id);
       await this.refresh();
@@ -384,6 +435,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async deleteCommand(definition: CommandDefinition): Promise<void> {
+    if (!window.confirm(`Delete !${definition.name}? This cannot be undone.`)) {
+      return;
+    }
+
     await this.runOperation(async () => {
       await this.runtime.deleteCommand(definition.id);
       await this.refresh();
@@ -572,6 +627,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   async deleteRewardMapping(mapping: RewardAutomationMapping): Promise<void> {
+    const rewardTitle = this.rewardTitleFor(mapping.rewardId);
+    const automationName = this.automationNameFor(mapping.automationId);
+
+    if (
+      !window.confirm(
+        `Remove the mapping from "${rewardTitle}" to "${automationName}"? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
     await this.runOperation(async () => {
       await this.runtime.deleteRewardMapping(mapping.rewardId);
       this.rewardMappings.update((items) =>
@@ -634,7 +700,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       );
       this.pollTitle = '';
       this.pollChoices = '';
-      this.showNotice(`Poll created (${poll.id}).`, 'success');
+      await this.refreshPolls(`Poll created (${poll.id}).`);
     });
   }
 
@@ -649,7 +715,58 @@ export class DashboardComponent implements OnInit, OnDestroy {
       );
       this.predictionTitle = '';
       this.predictionOutcomes = '';
-      this.showNotice(`Prediction created (${prediction.id}).`, 'success');
+      await this.refreshPredictions(`Prediction created (${prediction.id}).`);
+    });
+  }
+
+  async refreshOperations(successMessage?: string): Promise<void> {
+    await this.refreshOperationData(
+      () => this.loadOperations(),
+      successMessage,
+      'The active polls and predictions could not be refreshed.',
+    );
+  }
+
+  async endActivePoll(poll: TwitchPollInfo): Promise<void> {
+    if (!window.confirm(`End the poll "${poll.title}" now?`)) {
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.endPoll(poll.id, 'TERMINATED');
+      await this.refreshPolls(`Ended poll "${poll.title}".`);
+    });
+  }
+
+  async lockPrediction(prediction: TwitchPredictionInfo): Promise<void> {
+    await this.runOperation(async () => {
+      await this.runtime.resolvePrediction(prediction.id, 'LOCKED');
+      await this.refreshPredictions(`Locked prediction "${prediction.title}".`);
+    });
+  }
+
+  async cancelPrediction(prediction: TwitchPredictionInfo): Promise<void> {
+    if (!window.confirm(`Cancel the prediction "${prediction.title}"?`)) {
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.resolvePrediction(prediction.id, 'CANCELED');
+      await this.refreshPredictions(`Canceled prediction "${prediction.title}".`);
+    });
+  }
+
+  async resolveActivePrediction(prediction: TwitchPredictionInfo): Promise<void> {
+    const winningOutcomeId = this.predictionWinningOutcomeIds()[prediction.id];
+
+    if (!winningOutcomeId) {
+      this.showNotice('Choose a winning outcome before resolving the prediction.', 'error');
+      return;
+    }
+
+    await this.runOperation(async () => {
+      await this.runtime.resolvePrediction(prediction.id, 'RESOLVED', winningOutcomeId);
+      await this.refreshPredictions(`Resolved prediction "${prediction.title}".`);
     });
   }
 
@@ -668,6 +785,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.rewards().find((reward) => reward.id === rewardId)?.title ?? rewardId;
   }
 
+  setPredictionWinner(predictionId: string, outcomeId: string): void {
+    this.predictionWinningOutcomeIds.update((selections) => ({
+      ...selections,
+      [predictionId]: outcomeId,
+    }));
+  }
+
+  pollChoiceTitles(poll: TwitchPollInfo): string {
+    return poll.choices.map((choice) => choice.title).join(' · ');
+  }
+
+  predictionOutcomeTitles(prediction: TwitchPredictionInfo): string {
+    return prediction.outcomes.map((outcome) => outcome.title).join(' · ');
+  }
+
   eventTypeLabel(eventType: string): string {
     return eventType.replace(/^(twitch|command|manual|automation)\./, '');
   }
@@ -684,14 +816,117 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private showError(error: unknown): void {
-    const message = error instanceof Error ? error.message : 'The operation failed.';
-    this.showNotice(message, 'error');
+  private async loadOperations(): Promise<void> {
+    const [pollsResult, predictionsResult] = await Promise.allSettled([
+      this.runtime.getPolls(),
+      this.runtime.getPredictions(),
+    ]);
+
+    if (pollsResult.status === 'fulfilled') {
+      this.polls.set(pollsResult.value);
+    }
+    if (predictionsResult.status === 'fulfilled') {
+      this.predictions.set(predictionsResult.value);
+    }
+
+    const errors: unknown[] = [];
+    if (pollsResult.status === 'rejected') {
+      errors.push(pollsResult.reason);
+    }
+    if (predictionsResult.status === 'rejected') {
+      errors.push(predictionsResult.reason);
+    }
+    if (errors.length === 1) {
+      throw errors[0];
+    }
+    if (errors.length > 1) {
+      const authorizationError = errors.find(isAuthorizationError);
+      if (authorizationError) {
+        throw authorizationError;
+      }
+      throw new Error(errors.map(errorMessage).join(' '));
+    }
+  }
+
+  private async refreshPolls(successMessage: string): Promise<void> {
+    await this.refreshOperationData(
+      async () => {
+        this.polls.set(await this.runtime.getPolls());
+      },
+      successMessage,
+      'The active poll list could not be refreshed.',
+    );
+  }
+
+  private async refreshPredictions(successMessage: string): Promise<void> {
+    await this.refreshOperationData(
+      async () => {
+        this.predictions.set(await this.runtime.getPredictions());
+      },
+      successMessage,
+      'The active predictions list could not be refreshed.',
+    );
+  }
+
+  private async refreshOperationData(
+    load: () => Promise<void>,
+    successMessage: string | undefined,
+    errorContext: string,
+  ): Promise<void> {
+    this.sectionLoading.update((states) => ({ ...states, operations: true }));
+
+    try {
+      await load();
+      if (successMessage) {
+        this.showNotice(successMessage, 'success');
+      }
+    } catch (error) {
+      this.showError(error, successMessage ? `${successMessage} ${errorContext}` : undefined);
+    } finally {
+      this.sectionLoading.update((states) => ({ ...states, operations: false }));
+    }
+  }
+
+  private showError(error: unknown, context?: string): void {
+    const reconnectRequired = isAuthorizationError(error);
+    const reason = reconnectRequired
+      ? 'Twitch authorization is missing or expired. Reconnect Twitch to continue.'
+      : errorMessage(error);
+    const message = context ? `${context} ${reason}` : reason;
+    this.notice.set({ message, reconnectRequired, tone: 'error' });
   }
 
   private showNotice(message: string, tone: DashboardNotice['tone']): void {
     this.notice.set({ message, tone });
   }
+}
+
+function isAuthorizationError(error: unknown): boolean {
+  return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    const body = error.error;
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'message' in body &&
+      typeof body.message === 'string'
+    ) {
+      return body.message;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error;
+  }
+
+  return 'The operation failed.';
 }
 
 function formatDuration(milliseconds: number): string {

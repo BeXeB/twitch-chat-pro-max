@@ -286,6 +286,104 @@ test('sends the complete action catalog through typed Helix requests', async () 
   }
 });
 
+test('lists polls and predictions with the fields needed for dashboard actions', async () => {
+  const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
+  const twitchApi = new TwitchApiClient(config, twitchAuth);
+  const originalFetch = globalThis.fetch;
+  const requests: string[] = [];
+
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+
+    if (url === 'https://id.twitch.tv/oauth2/token') {
+      return jsonResponse({
+        access_token: 'access-token',
+        expires_in: 3600,
+        refresh_token: 'refresh-token',
+        scope: [],
+        token_type: 'bearer',
+      });
+    }
+
+    requests.push(url);
+
+    if (url === 'https://api.example.test/helix/polls?broadcaster_id=broadcaster&first=20') {
+      return jsonResponse({
+        data: [
+          {
+            choices: [{ id: 'choice-1', title: 'Blue' }],
+            id: 'poll-1',
+            started_at: '2026-10-16T10:00:00.000Z',
+            status: 'ACTIVE',
+            title: 'Best color?',
+          },
+        ],
+      });
+    }
+
+    if (url === 'https://api.example.test/helix/predictions?broadcaster_id=broadcaster&first=20') {
+      return jsonResponse({
+        data: [
+          {
+            created_at: '2026-10-16T10:00:00.000Z',
+            id: 'prediction-1',
+            locked_at: null,
+            outcomes: [{ id: 'outcome-1', title: 'Yes' }],
+            status: 'ACTIVE',
+            title: 'Will it work?',
+          },
+        ],
+      });
+    }
+
+    throw new Error(`Unexpected request: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const authorizationUrl = new URL(twitchAuth.createAuthorizationUrl());
+    const state = authorizationUrl.searchParams.get('state');
+
+    assert.ok(state);
+    await twitchAuth.completeAuthorization('authorization-code', state);
+
+    const operations = new TwitchOperationsService(() => ({
+      api: twitchApi,
+      broadcaster: {
+        displayName: 'Streamer',
+        id: 'broadcaster',
+        login: 'streamer',
+        profileImageUrl: 'https://example.test/avatar.png',
+      },
+    }));
+
+    assert.deepEqual(await operations.getPolls(), [
+      {
+        choices: [{ id: 'choice-1', title: 'Blue' }],
+        id: 'poll-1',
+        startedAt: '2026-10-16T10:00:00.000Z',
+        status: 'ACTIVE',
+        title: 'Best color?',
+      },
+    ]);
+    assert.deepEqual(await operations.getPredictions(), [
+      {
+        createdAt: '2026-10-16T10:00:00.000Z',
+        id: 'prediction-1',
+        lockedAt: null,
+        outcomes: [{ id: 'outcome-1', title: 'Yes' }],
+        status: 'ACTIVE',
+        title: 'Will it work?',
+      },
+    ]);
+    assert.deepEqual(requests, [
+      'https://api.example.test/helix/polls?broadcaster_id=broadcaster&first=20',
+      'https://api.example.test/helix/predictions?broadcaster_id=broadcaster&first=20',
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('increments a reward cost for every serialized redemption', async () => {
   const twitchAuth = new TwitchAuthService(config, new MemoryRefreshTokenStore());
   const twitchApi = new TwitchApiClient(config, twitchAuth);

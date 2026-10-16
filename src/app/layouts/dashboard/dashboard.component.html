@@ -34,6 +34,9 @@
   @if (notice(); as currentNotice) {
     <p class="notice" [class.notice-error]="currentNotice.tone === 'error'" role="status">
       {{ currentNotice.message }}
+      @if (currentNotice.reconnectRequired) {
+        <a href="/api/auth/twitch/login">Reconnect Twitch</a>
+      }
       <button type="button" aria-label="Dismiss message" (click)="notice.set(null)">Dismiss</button>
     </p>
   }
@@ -60,9 +63,19 @@
               <p class="eyebrow">LIVE SNAPSHOT</p>
               <h2>Runtime overview</h2>
             </div>
-            <button class="text-button" type="button" (click)="refresh()" [disabled]="loading()">
-              Reload data
-            </button>
+            <div class="row-actions">
+              @if (sectionLoading().overview) {
+                <span role="status">Loading overview…</span>
+              }
+              <button
+                class="text-button"
+                type="button"
+                (click)="refresh()"
+                [disabled]="sectionLoading().overview"
+              >
+                Reload data
+              </button>
+            </div>
           </div>
           <div class="metric-strip">
             <div class="metric">
@@ -182,7 +195,11 @@
               <p class="eyebrow">TRIGGER / CONDITION / ACTION</p>
               <h2>Automations</h2>
             </div>
-            <span class="count-label">{{ automations().length }} definitions</span>
+            <span class="count-label">{{
+              sectionLoading().automations
+                ? 'Loading automations…'
+                : automations().length + ' definitions'
+            }}</span>
           </div>
           <form class="editor-form" (ngSubmit)="saveAutomationDraft()">
             <p class="form-heading wide-field">
@@ -541,7 +558,13 @@
                 </div>
               </article>
             } @empty {
-              <p class="empty-state">No automations configured.</p>
+              <p class="empty-state">
+                {{
+                  sectionLoading().automations
+                    ? 'Loading automations…'
+                    : 'No automations configured.'
+                }}
+              </p>
             }
           </div>
         </section>
@@ -554,7 +577,9 @@
               <p class="eyebrow">CHAT COMMANDS</p>
               <h2>Commands</h2>
             </div>
-            <span class="count-label">{{ commands().length }} definitions</span>
+            <span class="count-label">{{
+              sectionLoading().commands ? 'Loading commands…' : commands().length + ' definitions'
+            }}</span>
           </div>
           <form class="editor-form command-form" (ngSubmit)="createCommand()">
             <label
@@ -676,7 +701,9 @@
                 </div>
               </article>
             } @empty {
-              <p class="empty-state">No commands configured.</p>
+              <p class="empty-state">
+                {{ sectionLoading().commands ? 'Loading commands…' : 'No commands configured.' }}
+              </p>
             }
           </div>
         </section>
@@ -688,6 +715,9 @@
             <div>
               <p class="eyebrow">CHANNEL POINTS</p>
               <h2>Rewards</h2>
+              @if (sectionLoading().rewards) {
+                <span class="count-label" role="status">Loading rewards and mappings…</span>
+              }
             </div>
             <button class="text-button" type="button" (click)="syncRewards()" [disabled]="busy()">
               Sync from Twitch
@@ -777,7 +807,13 @@
                   </button>
                 </article>
               } @empty {
-                <p class="empty-state">No reward mappings configured.</p>
+                <p class="empty-state">
+                  {{
+                    sectionLoading().rewards
+                      ? 'Loading reward mappings…'
+                      : 'No reward mappings configured.'
+                  }}
+                </p>
               }
             </div>
           </div>
@@ -885,7 +921,13 @@
                 </form>
               }
             } @empty {
-              <p class="empty-state">No rewards loaded. Synchronize after connecting Twitch.</p>
+              <p class="empty-state">
+                {{
+                  sectionLoading().rewards
+                    ? 'Loading rewards…'
+                    : 'No rewards loaded. Synchronize after connecting Twitch.'
+                }}
+              </p>
             }
           </div>
         </section>
@@ -897,6 +939,19 @@
             <div>
               <p class="eyebrow">BROADCASTER INTENTS</p>
               <h2>Operations</h2>
+            </div>
+            <div class="row-actions">
+              @if (sectionLoading().operations) {
+                <span role="status">Loading active polls and predictions…</span>
+              }
+              <button
+                class="text-button"
+                type="button"
+                (click)="refreshOperations()"
+                [disabled]="sectionLoading().operations || busy()"
+              >
+                Refresh active items
+              </button>
             </div>
           </div>
           <div class="operations-grid">
@@ -1018,6 +1073,95 @@
               >
                 Create prediction
               </button>
+            </section>
+            <section class="operation-block">
+              <h3>Active polls</h3>
+              @for (poll of activePolls(); track poll.id) {
+                <article class="definition-row">
+                  <div class="definition-main">
+                    <strong>{{ poll.title }}</strong>
+                    <span>{{ pollChoiceTitles(poll) }}</span>
+                  </div>
+                  <div class="definition-meta">
+                    <span>{{ poll.status }}</span>
+                    <span>Started {{ poll.startedAt | date: 'short' }}</span>
+                  </div>
+                  <button
+                    class="text-button danger-text"
+                    type="button"
+                    (click)="endActivePoll(poll)"
+                    [disabled]="busy()"
+                  >
+                    End poll
+                  </button>
+                </article>
+              } @empty {
+                <p class="empty-state">
+                  {{ sectionLoading().operations ? 'Loading active polls…' : 'No active polls.' }}
+                </p>
+              }
+            </section>
+            <section class="operation-block">
+              <h3>Active predictions</h3>
+              @for (prediction of activePredictions(); track prediction.id) {
+                <article class="definition-row">
+                  <div class="definition-main">
+                    <strong>{{ prediction.title }}</strong>
+                    <span>{{ predictionOutcomeTitles(prediction) }}</span>
+                  </div>
+                  <div class="definition-meta">
+                    <span>{{ prediction.status }}</span>
+                    <span>Created {{ prediction.createdAt | date: 'short' }}</span>
+                  </div>
+                  <div class="row-actions">
+                    @if (prediction.status === 'ACTIVE') {
+                      <button
+                        class="text-button"
+                        type="button"
+                        (click)="lockPrediction(prediction)"
+                        [disabled]="busy()"
+                      >
+                        Lock
+                      </button>
+                    } @else {
+                      <select
+                        [name]="'predictionWinner' + prediction.id"
+                        [ngModel]="predictionWinningOutcomeIds()[prediction.id] || ''"
+                        (ngModelChange)="setPredictionWinner(prediction.id, $event)"
+                      >
+                        <option value="">Choose winner</option>
+                        @for (outcome of prediction.outcomes; track outcome.id) {
+                          <option [value]="outcome.id">{{ outcome.title }}</option>
+                        }
+                      </select>
+                      <button
+                        class="text-button"
+                        type="button"
+                        (click)="resolveActivePrediction(prediction)"
+                        [disabled]="busy() || !predictionWinningOutcomeIds()[prediction.id]"
+                      >
+                        Resolve
+                      </button>
+                    }
+                    <button
+                      class="text-button danger-text"
+                      type="button"
+                      (click)="cancelPrediction(prediction)"
+                      [disabled]="busy()"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </article>
+              } @empty {
+                <p class="empty-state">
+                  {{
+                    sectionLoading().operations
+                      ? 'Loading active predictions…'
+                      : 'No active predictions.'
+                  }}
+                </p>
+              }
             </section>
           </div>
         </section>

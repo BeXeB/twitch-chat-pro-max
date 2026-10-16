@@ -55,3 +55,20 @@ export interface TwitchChannelStats {
   followerCount: number | null;
   subscriberCount: number | null;
 }
+
+export interface TwitchPollInfo {
+  choices: Array<{ id: string; title: string }>;
+  id: string;
+  startedAt: string;
+  status: 'ACTIVE' | 'ARCHIVED' | 'COMPLETED' | 'INVALID' | 'MODERATED' | 'TERMINATED';
+  title: string;
+}
+
+export interface TwitchPredictionInfo {
+  createdAt: string;
+  id: string;
+  lockedAt: string | null;
+  outcomes: Array<{ id: string; title: string }>;
+  status: 'ACTIVE' | 'CANCELED' | 'LOCKED' | 'RESOLVED';
+  title: string;
+}

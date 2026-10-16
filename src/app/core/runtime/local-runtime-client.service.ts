@@ -20,6 +20,8 @@ import {
   CustomRewardCreateRequest,
   CustomRewardUpdateRequest,
   TwitchGameCategory,
+  TwitchPollInfo,
+  TwitchPredictionInfo,
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
 
@@ -235,6 +237,10 @@ export class LocalRuntimeClient {
     );
   }
 
+  getPolls(): Promise<TwitchPollInfo[]> {
+    return firstValueFrom(this.http.get<TwitchPollInfo[]>('/api/polls'));
+  }
+
   async endPoll(pollId: string, status: 'ARCHIVED' | 'TERMINATED'): Promise<boolean> {
     await firstValueFrom(
       this.http.patch<void>(`/api/polls/${encodeURIComponent(pollId)}`, { status }),
@@ -254,6 +260,10 @@ export class LocalRuntimeClient {
         durationSeconds,
       }),
     );
+  }
+
+  getPredictions(): Promise<TwitchPredictionInfo[]> {
+    return firstValueFrom(this.http.get<TwitchPredictionInfo[]>('/api/predictions'));
   }
 
   async resolvePrediction(

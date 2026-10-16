@@ -400,6 +400,10 @@ export class LocalRuntimeService {
     return this.operations.endPoll(pollId, status);
   }
 
+  async getPolls() {
+    return this.operations.getPolls();
+  }
+
   async createPrediction(
     title: string,
     outcomes: string[],
@@ -414,6 +418,10 @@ export class LocalRuntimeService {
     winningOutcomeId?: string,
   ): Promise<void> {
     return this.operations.resolvePrediction(predictionId, status, winningOutcomeId);
+  }
+
+  async getPredictions() {
+    return this.operations.getPredictions();
   }
 
   async getStreamInfo(): Promise<TwitchStreamInfo | null> {
