@@ -4,6 +4,7 @@
 /dist
 /tmp
 /data
+/.agent-workspace
 /out-tsc
 /bazel-out
 
