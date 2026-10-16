@@ -535,7 +535,7 @@ h3 {
 }
 .reward-row {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) 110px 90px;
+  grid-template-columns: 10px minmax(0, 1fr) 90px 70px minmax(0, 150px) auto;
   gap: 12px;
   min-height: 39px;
   border-bottom: 1px solid #303a36a6;
@@ -544,7 +544,7 @@ h3 {
   font-size: 11px;
   font-weight: 500;
 }
-.reward-row > span:not(.reward-swatch) {
+.reward-row > span:not(.reward-swatch):not(.row-actions) {
   text-align: right;
 }
 .reward-swatch {

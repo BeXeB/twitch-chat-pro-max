@@ -18,11 +18,13 @@ import {
 import { CommandDefinition, CommandRole, commandRoles } from '../../../../shared/contracts/command';
 import { ApplicationEvent } from '../../../../shared/contracts/runtime-events';
 import {
+  ChannelPointReward,
   RedemptionCompletionPolicy,
   RewardAutomationMapping,
 } from '../../../../shared/contracts/rewards';
 import {
   CustomRewardCreateRequest,
+  CustomRewardUpdateRequest,
   TwitchChannelInfo,
   TwitchChannelStats,
   TwitchGameCategory,
@@ -32,6 +34,17 @@ import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.serv
 
 type DashboardSection = 'overview' | 'automations' | 'commands' | 'rewards' | 'operations';
 type DashboardNotice = { message: string; tone: 'error' | 'success' };
+interface RewardEditDraft {
+  cost: number;
+  globalCooldownSeconds: number;
+  id: string;
+  isEnabled: boolean;
+  maxPerStream: number;
+  maxPerUserPerStream: number;
+  prompt: string;
+  title: string;
+  userInputRequired: boolean;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -98,6 +111,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly editableActionTypes = editableActionTypes;
   readonly describeAction = describeAction;
   commandName = '';
+  editingCommand: CommandDefinition | null = null;
+  rewardEdit: RewardEditDraft | null = null;
   commandAliases = '';
   commandRole: CommandRole = 'everyone';
   commandArgumentPolicy: CommandDefinition['argumentPolicy'] = 'optional';
@@ -299,6 +314,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  editCommand(command: CommandDefinition): void {
+    this.editingCommand = command;
+    this.commandName = command.name;
+    this.commandAliases = command.aliases.join(', ');
+    this.commandRole = command.requiredRole;
+    this.commandArgumentPolicy = command.argumentPolicy;
+    this.commandAutomationId = command.targetAutomationId;
+    this.commandCooldownSeconds = (command.cooldown?.durationMs ?? 0) / 1000;
+    this.commandCooldownScope = command.cooldown?.scope ?? 'user';
+  }
+
+  cancelCommandEdit(): void {
+    this.editingCommand = null;
+    this.commandName = '';
+    this.commandAliases = '';
+    this.commandCooldownSeconds = 0;
+    this.commandAutomationId = '';
+  }
+
   async createCommand(): Promise<void> {
     const name = slug(this.commandName);
     const target = this.commandAutomations().find(
@@ -310,6 +344,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const editing = this.editingCommand;
     const cooldownSeconds = Number(this.commandCooldownSeconds);
     const definition: CommandDefinition = {
       aliases: this.commandAliases
@@ -325,8 +360,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
             },
           }
         : {}),
-      enabled: true,
-      id: crypto.randomUUID(),
+      enabled: editing?.enabled ?? true,
+      id: editing?.id ?? crypto.randomUUID(),
       name,
       requiredRole: this.commandRole,
       targetAutomationId: target.id,
@@ -335,10 +370,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     await this.runOperation(async () => {
       await this.runtime.saveCommand(definition);
-      this.commandName = '';
-      this.commandAliases = '';
+      this.cancelCommandEdit();
       await this.refresh();
-      this.showNotice(`Created !${name}.`, 'success');
+      this.showNotice(`${editing ? 'Updated' : 'Created'} !${name}.`, 'success');
     });
   }
 
@@ -354,6 +388,87 @@ export class DashboardComponent implements OnInit, OnDestroy {
       await this.runtime.deleteCommand(definition.id);
       await this.refresh();
       this.showNotice(`Deleted !${definition.name}.`, 'success');
+    });
+  }
+
+  editReward(reward: ChannelPointReward): void {
+    this.rewardEdit = {
+      cost: reward.cost,
+      globalCooldownSeconds: reward.globalCooldownSeconds ?? 0,
+      id: reward.id,
+      isEnabled: reward.isEnabled,
+      maxPerStream: reward.maxPerStream ?? 0,
+      maxPerUserPerStream: reward.maxPerUserPerStream ?? 0,
+      prompt: reward.prompt ?? '',
+      title: reward.title,
+      userInputRequired: reward.isUserInputRequired,
+    };
+  }
+
+  cancelRewardEdit(): void {
+    this.rewardEdit = null;
+  }
+
+  async saveRewardEdit(): Promise<void> {
+    const edit = this.rewardEdit;
+
+    if (!edit) {
+      return;
+    }
+
+    const title = edit.title.trim();
+    const integer = (value: unknown, min: number, max: number): boolean =>
+      Number.isInteger(Number(value)) && Number(value) >= min && Number(value) <= max;
+
+    if (
+      !title ||
+      title.length > 45 ||
+      !integer(edit.cost, 1, 1000000000) ||
+      !integer(edit.globalCooldownSeconds, 0, 604800) ||
+      !integer(edit.maxPerStream, 0, 1000000) ||
+      !integer(edit.maxPerUserPerStream, 0, 1000000) ||
+      edit.prompt.length > 200
+    ) {
+      this.showNotice('Check the reward fields: title, cost and limits are out of range.', 'error');
+      return;
+    }
+
+    const globalCooldown = Number(edit.globalCooldownSeconds);
+    const perStream = Number(edit.maxPerStream);
+    const perUser = Number(edit.maxPerUserPerStream);
+    const updates: CustomRewardUpdateRequest = {
+      cost: Number(edit.cost),
+      enabled: edit.isEnabled,
+      isGlobalCooldownEnabled: globalCooldown > 0,
+      isMaxPerStreamEnabled: perStream > 0,
+      isMaxPerUserPerStreamEnabled: perUser > 0,
+      prompt: edit.prompt,
+      title,
+      userInputRequired: edit.userInputRequired,
+      ...(globalCooldown > 0 ? { globalCooldownSeconds: globalCooldown } : {}),
+      ...(perStream > 0 ? { maxPerStream: perStream } : {}),
+      ...(perUser > 0 ? { maxPerUserPerStream: perUser } : {}),
+    };
+
+    await this.runOperation(async () => {
+      const updated = await this.runtime.updateCustomReward(edit.id, updates);
+      this.rewards.update((rewards) =>
+        rewards.map((reward) => (reward.id === updated.id ? updated : reward)),
+      );
+      this.rewardEdit = null;
+      this.showNotice(`Updated reward "${updated.title}".`, 'success');
+    });
+  }
+
+  async deleteReward(reward: ChannelPointReward): Promise<void> {
+    await this.runOperation(async () => {
+      await this.runtime.deleteCustomReward(reward.id);
+      this.rewards.update((rewards) => rewards.filter((item) => item.id !== reward.id));
+      if (this.rewardEdit?.id === reward.id) {
+        this.rewardEdit = null;
+      }
+      await this.refresh();
+      this.showNotice(`Deleted reward "${reward.title}".`, 'success');
     });
   }
 

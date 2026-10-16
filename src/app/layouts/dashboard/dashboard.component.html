@@ -615,7 +615,16 @@
                 <option value="global">Global</option>
               </select>
             </label>
-            <button class="primary-button" type="submit" [disabled]="busy()">Create command</button>
+            <div class="row-actions">
+              <button class="primary-button" type="submit" [disabled]="busy()">
+                {{ editingCommand ? 'Save command' : 'Create command' }}
+              </button>
+              @if (editingCommand) {
+                <button class="text-button" type="button" (click)="cancelCommandEdit()">
+                  Cancel
+                </button>
+              }
+            </div>
           </form>
           <div class="definition-list">
             @for (command of commands(); track command.id) {
@@ -629,11 +638,25 @@
                 <div class="definition-meta">
                   <span>{{ command.requiredRole }}</span>
                   <span>{{ command.argumentPolicy }} args</span>
+                  <span>{{
+                    command.cooldown
+                      ? command.cooldown.durationMs / 1000 + 's ' + command.cooldown.scope
+                      : 'no cooldown'
+                  }}</span>
+                  <span>→ {{ automationNameFor(command.targetAutomationId) }}</span>
                   <span [class.disabled-state]="!command.enabled">{{
                     command.enabled ? 'enabled' : 'disabled'
                   }}</span>
                 </div>
                 <div class="row-actions">
+                  <button
+                    class="text-button"
+                    type="button"
+                    (click)="editCommand(command)"
+                    [disabled]="busy()"
+                  >
+                    Edit
+                  </button>
                   <button
                     class="text-button"
                     type="button"
@@ -771,8 +794,96 @@
                 ></span>
                 <strong>{{ reward.title }}</strong>
                 <span>{{ reward.cost }} points</span>
-                <span>{{ reward.isEnabled ? 'enabled' : 'disabled' }}</span>
+                <span [class.disabled-state]="!reward.isEnabled">{{
+                  reward.isEnabled ? 'enabled' : 'disabled'
+                }}</span>
+                <span>{{
+                  mappingFor(reward.id)
+                    ? '→ ' + automationNameFor(mappingFor(reward.id)!.automationId)
+                    : 'not mapped'
+                }}</span>
+                <span class="row-actions">
+                  <button
+                    class="text-button"
+                    type="button"
+                    (click)="editReward(reward)"
+                    [disabled]="busy()"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    class="text-button danger-text"
+                    type="button"
+                    (click)="deleteReward(reward)"
+                    [disabled]="busy()"
+                  >
+                    Delete
+                  </button>
+                </span>
               </article>
+              @if (rewardEdit && rewardEdit.id === reward.id) {
+                <form class="editor-form reward-edit-form" (ngSubmit)="saveRewardEdit()">
+                  <label
+                    >Title
+                    <input name="editTitle" [(ngModel)]="rewardEdit.title" maxlength="45" />
+                  </label>
+                  <label
+                    >Cost
+                    <input name="editCost" type="number" min="1" [(ngModel)]="rewardEdit.cost" />
+                  </label>
+                  <label class="check-field"
+                    ><input name="editEnabled" type="checkbox" [(ngModel)]="rewardEdit.isEnabled" />
+                    Enabled</label
+                  >
+                  <label class="wide-field"
+                    >Prompt
+                    <input name="editPrompt" [(ngModel)]="rewardEdit.prompt" maxlength="200" />
+                  </label>
+                  <label class="check-field"
+                    ><input
+                      name="editUserInput"
+                      type="checkbox"
+                      [(ngModel)]="rewardEdit.userInputRequired"
+                    />
+                    Viewer must enter text</label
+                  >
+                  <label
+                    >Global cooldown (s, 0 = off)
+                    <input
+                      name="editCooldown"
+                      type="number"
+                      min="0"
+                      [(ngModel)]="rewardEdit.globalCooldownSeconds"
+                    />
+                  </label>
+                  <label
+                    >Max per stream (0 = off)
+                    <input
+                      name="editMaxStream"
+                      type="number"
+                      min="0"
+                      [(ngModel)]="rewardEdit.maxPerStream"
+                    />
+                  </label>
+                  <label
+                    >Max per user per stream (0 = off)
+                    <input
+                      name="editMaxUser"
+                      type="number"
+                      min="0"
+                      [(ngModel)]="rewardEdit.maxPerUserPerStream"
+                    />
+                  </label>
+                  <div class="row-actions wide-row">
+                    <button class="primary-button" type="submit" [disabled]="busy()">
+                      Save reward
+                    </button>
+                    <button class="text-button" type="button" (click)="cancelRewardEdit()">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              }
             } @empty {
               <p class="empty-state">No rewards loaded. Synchronize after connecting Twitch.</p>
             }
