@@ -4,9 +4,30 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { map } from 'rxjs';
 
+import { ChatSettingsUpdate } from '../../../../shared/contracts/automation';
+import { TwitchChatAnnouncementColor } from '../../../../shared/contracts/twitch-operations';
+import { getErrorMessage } from '../../core/utils/error-message';
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
+import { normalizeTwitchLogin } from '../../core/twitch/normalize-twitch-login';
 import { LinkifyPipe } from '../../core/pipes/linkify.pipe';
 import { ChatMessage } from '../../core/twitch/models/chat-message.model';
+
+const chatModeCommands: Record<
+  string,
+  { enabled: boolean; label: string; setting: 'emoteMode' | 'subscriberMode' }
+> = {
+  emoteonly: { enabled: true, label: 'emote-only', setting: 'emoteMode' },
+  emoteonlyoff: { enabled: false, label: 'emote-only', setting: 'emoteMode' },
+  subscribers: { enabled: true, label: 'subscriber-only', setting: 'subscriberMode' },
+  subscribersoff: { enabled: false, label: 'subscriber-only', setting: 'subscriberMode' },
+};
+
+const announcementCommandColors: Record<string, TwitchChatAnnouncementColor> = {
+  announceblue: 'blue',
+  announcegreen: 'green',
+  announceorange: 'orange',
+  announcepurple: 'purple',
+};
 
 @Component({
   selector: 'app-monitor',
@@ -89,7 +110,7 @@ export class MonitorComponent {
     this.sendingChatMessage = true;
 
     try {
-      const sent = await this.runModerationAction(
+      const sent = await this.runChatAction(
         this.localRuntimeClient.sendChatMessage(message),
         'Message sent.',
         'Failed to send chat message.',
@@ -104,77 +125,97 @@ export class MonitorComponent {
   }
 
   private async runSlashCommand(commandText: string): Promise<void> {
-    const [command = '', login, ...argumentsList] = commandText.slice(1).trim().split(/\s+/);
+    const [command = '', ...argumentsList] = commandText.slice(1).trim().split(/\s+/);
     const normalizedCommand = command.toLowerCase();
 
     if (normalizedCommand === 'help') {
       this.showActionFeedback(
-        'Commands: /ban <user> [reason], /unban <user>, /timeout <user> <seconds> [reason], /untimeout <user>.',
+        [
+          'Commands: /ban <user> [reason], /unban <user>, /timeout <user> [seconds] [reason], /untimeout <user>,',
+          '/vip <user>, /shoutout <user> (/so), /announce [color] <message> or /announceblue|green|orange|purple,',
+          '/emoteonly, /emoteonlyoff, /subscribers, /subscribersoff, /slow [seconds], /slowoff,',
+          '/followers [minutes], /followersoff. Click a chat username for moderation and message deletion.',
+        ].join(' '),
         true,
       );
       this.chatDraft = '';
       return;
     }
 
-    if (normalizedCommand === 'unban' || normalizedCommand === 'untimeout') {
-      if (!login || argumentsList.length > 0) {
-        this.showActionFeedback(`Usage: /${normalizedCommand} <user>`, false);
-        return;
+    if (await this.runModerationSlashCommand(normalizedCommand, argumentsList)) {
+      return;
+    }
+    if (await this.runChatSettingsSlashCommand(normalizedCommand, argumentsList)) {
+      return;
+    }
+    if (await this.runAnnouncementSlashCommand(normalizedCommand, argumentsList)) {
+      return;
+    }
+
+    this.showActionFeedback(
+      `Unknown command /${normalizedCommand}. Use /help for supported commands.`,
+      false,
+    );
+  }
+
+  private async runModerationSlashCommand(
+    command: string,
+    argumentsList: string[],
+  ): Promise<boolean> {
+    const login = normalizeTwitchLogin(argumentsList[0] ?? '');
+
+    if (command === 'unban' || command === 'untimeout') {
+      if (!login || argumentsList.length !== 1) {
+        this.showActionFeedback(`Usage: /${command} <user>`, false);
+        return true;
       }
 
-      const actionName = normalizedCommand === 'untimeout' ? 'Removed timeout from' : 'Unbanned';
-      const succeeded = await this.runModerationAction(
+      const actionName = command === 'untimeout' ? 'Removed timeout from' : 'Unbanned';
+      const succeeded = await this.runChatAction(
         this.localRuntimeClient
           .getUserIdByLogin(login)
           .then((userId) => this.localRuntimeClient.unbanUser(userId)),
         `${actionName} ${login}.`,
         `Failed to remove timeout or ban from ${login}.`,
       );
-
-      if (succeeded) {
-        this.chatDraft = '';
-      }
-
-      return;
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
     }
 
-    if (normalizedCommand === 'ban') {
+    if (command === 'ban') {
       if (!login) {
         this.showActionFeedback('Usage: /ban <user> [reason]', false);
-        return;
+        return true;
       }
 
-      const reason = argumentsList.join(' ');
-      const succeeded = await this.runModerationAction(
+      const reason = argumentsList.slice(1).join(' ');
+      const succeeded = await this.runChatAction(
         this.localRuntimeClient
           .getUserIdByLogin(login)
           .then((userId) => this.localRuntimeClient.banUser(userId, reason || undefined)),
         `Banned ${login}.`,
         `Failed to ban ${login}.`,
       );
-
-      if (succeeded) {
-        this.chatDraft = '';
-      }
-
-      return;
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
     }
 
-    if (normalizedCommand === 'timeout') {
-      const durationSeconds = Number(argumentsList[0]);
+    if (command === 'timeout') {
+      const durationArgument = argumentsList[1];
+      const hasDuration = durationArgument !== undefined && /^[+-]?\d+$/.test(durationArgument);
+      const durationSeconds = hasDuration ? Number(durationArgument) : 600;
 
       if (
         !login ||
-        !Number.isInteger(durationSeconds) ||
-        durationSeconds < 1 ||
-        durationSeconds > 1209600
+        (hasDuration &&
+          (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 1209600))
       ) {
-        this.showActionFeedback('Usage: /timeout <user> <seconds> [reason]', false);
-        return;
+        this.showActionFeedback('Usage: /timeout <user> [seconds] [reason]', false);
+        return true;
       }
 
-      const reason = argumentsList.slice(1).join(' ');
-      const succeeded = await this.runModerationAction(
+      const reason = argumentsList.slice(hasDuration ? 2 : 1).join(' ');
+      const succeeded = await this.runChatAction(
         this.localRuntimeClient
           .getUserIdByLogin(login)
           .then((userId) =>
@@ -183,18 +224,191 @@ export class MonitorComponent {
         `Timed out ${login} for ${durationSeconds} seconds.`,
         `Failed to time out ${login}.`,
       );
-
-      if (succeeded) {
-        this.chatDraft = '';
-      }
-
-      return;
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
     }
 
-    this.showActionFeedback(
-      `Unknown command /${normalizedCommand}. Use /help for supported commands.`,
-      false,
+    if (command === 'vip') {
+      if (!login || argumentsList.length !== 1) {
+        this.showActionFeedback('Usage: /vip <user>', false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient
+          .getUserIdByLogin(login)
+          .then((userId) => this.localRuntimeClient.addChannelVip(userId)),
+        `Added ${login} as a VIP.`,
+        `Failed to add ${login} as a VIP.`,
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    if (command === 'shoutout' || command === 'so') {
+      if (!login || argumentsList.length !== 1) {
+        this.showActionFeedback(`Usage: /${command} <user>`, false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient
+          .getUserIdByLogin(login)
+          .then((userId) => this.localRuntimeClient.sendShoutout(userId)),
+        `Sent a shoutout to ${login}.`,
+        `Failed to send a shoutout to ${login}.`,
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    return false;
+  }
+
+  private async runChatSettingsSlashCommand(
+    command: string,
+    argumentsList: string[],
+  ): Promise<boolean> {
+    const modeCommand = chatModeCommands[command];
+
+    if (modeCommand) {
+      if (argumentsList.length > 0) {
+        this.showActionFeedback(`Usage: /${command}`, false);
+        return true;
+      }
+
+      const settings: ChatSettingsUpdate =
+        modeCommand.setting === 'emoteMode'
+          ? { emoteMode: modeCommand.enabled }
+          : { subscriberMode: modeCommand.enabled };
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient.updateChatSettings(settings),
+        `${modeCommand.enabled ? 'Enabled' : 'Disabled'} ${modeCommand.label} mode.`,
+        `Failed to update ${modeCommand.label} mode.`,
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    if (command === 'slow') {
+      const durationSeconds = argumentsList.length === 0 ? 30 : Number(argumentsList[0]);
+
+      if (
+        argumentsList.length > 1 ||
+        !Number.isInteger(durationSeconds) ||
+        durationSeconds < 1 ||
+        durationSeconds > 120
+      ) {
+        this.showActionFeedback('Usage: /slow [seconds] (1-120)', false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient.updateChatSettings({
+          slowMode: true,
+          slowModeWaitTimeSeconds: durationSeconds,
+        }),
+        `Enabled slow mode (${durationSeconds} seconds).`,
+        'Failed to enable slow mode.',
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    if (command === 'slowoff') {
+      if (argumentsList.length > 0) {
+        this.showActionFeedback('Usage: /slowoff', false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient.updateChatSettings({ slowMode: false }),
+        'Disabled slow mode.',
+        'Failed to disable slow mode.',
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    if (command === 'followers') {
+      const durationMinutes = argumentsList.length === 0 ? 0 : Number(argumentsList[0]);
+
+      if (
+        argumentsList.length > 1 ||
+        !Number.isInteger(durationMinutes) ||
+        durationMinutes < 0 ||
+        durationMinutes > 129600
+      ) {
+        this.showActionFeedback('Usage: /followers [minutes] (0-129600)', false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient.updateChatSettings({
+          followerMode: true,
+          followerModeDurationMinutes: durationMinutes,
+        }),
+        `Enabled follower-only mode (${durationMinutes} minute${durationMinutes === 1 ? '' : 's'}).`,
+        'Failed to enable follower-only mode.',
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    if (command === 'followersoff') {
+      if (argumentsList.length > 0) {
+        this.showActionFeedback('Usage: /followersoff', false);
+        return true;
+      }
+
+      const succeeded = await this.runChatAction(
+        this.localRuntimeClient.updateChatSettings({ followerMode: false }),
+        'Disabled follower-only mode.',
+        'Failed to disable follower-only mode.',
+      );
+      this.clearDraftAfterSuccess(succeeded);
+      return true;
+    }
+
+    return false;
+  }
+
+  private async runAnnouncementSlashCommand(
+    command: string,
+    argumentsList: string[],
+  ): Promise<boolean> {
+    const commandColor = announcementCommandColors[command];
+
+    if (command !== 'announce' && !commandColor) {
+      return false;
+    }
+
+    let color = commandColor;
+    let messageArguments = argumentsList;
+
+    if (command === 'announce') {
+      const explicitColor = getAnnouncementColor(argumentsList[0]);
+
+      if (explicitColor) {
+        color = explicitColor;
+        messageArguments = argumentsList.slice(1);
+      }
+    }
+
+    const message = messageArguments.join(' ').trim();
+
+    if (!message) {
+      this.showActionFeedback(`Usage: /${command} [color] <message>`, false);
+      return true;
+    }
+
+    const succeeded = await this.runChatAction(
+      this.localRuntimeClient.sendAnnouncement(message, color),
+      'Announcement sent.',
+      'Failed to send announcement.',
     );
+    this.clearDraftAfterSuccess(succeeded);
+    return true;
   }
 
   async timeoutUser(duration: number): Promise<void> {
@@ -206,7 +420,7 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    await this.runModerationAction(
+    await this.runChatAction(
       this.localRuntimeClient.timeoutUser(user.userId, duration),
       `Timed out ${user.displayName} for ${duration} seconds.`,
       `Failed to time out ${user.displayName}.`,
@@ -222,7 +436,7 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    await this.runModerationAction(
+    await this.runChatAction(
       this.localRuntimeClient.banUser(user.userId),
       `Banned ${user.displayName}.`,
       `Failed to ban ${user.displayName}.`,
@@ -238,7 +452,7 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    await this.runModerationAction(
+    await this.runChatAction(
       this.localRuntimeClient.unbanUser(user.userId),
       `Unbanned ${user.displayName}.`,
       `Failed to unban ${user.displayName}.`,
@@ -254,29 +468,32 @@ export class MonitorComponent {
 
     this.closeUserActions();
 
-    await this.runModerationAction(
+    await this.runChatAction(
       this.localRuntimeClient.deleteChatMessage(user.id),
       `Deleted ${user.displayName}'s message.`,
       `Failed to delete ${user.displayName}'s message.`,
     );
   }
 
-  private async runModerationAction(
+  private async runChatAction(
     action: Promise<boolean>,
     successMessage: string,
     failureMessage: string,
   ): Promise<boolean> {
-    let succeeded = false;
-
     try {
-      succeeded = await action;
-    } catch {
-      succeeded = false;
+      const succeeded = await action;
+      this.showActionFeedback(succeeded ? successMessage : failureMessage, succeeded);
+      return succeeded;
+    } catch (error) {
+      this.showActionFeedback(`${failureMessage} ${getErrorMessage(error)}`, false);
+      return false;
     }
+  }
 
-    this.showActionFeedback(succeeded ? successMessage : failureMessage, succeeded);
-
-    return succeeded;
+  private clearDraftAfterSuccess(succeeded: boolean): void {
+    if (succeeded) {
+      this.chatDraft = '';
+    }
   }
 
   private showActionFeedback(message: string, success: boolean): void {
@@ -293,4 +510,21 @@ export class MonitorComponent {
   }
 
   constructor(private readonly localRuntimeClient: LocalRuntimeClient) {}
+}
+
+function getAnnouncementColor(input: string | undefined): TwitchChatAnnouncementColor | undefined {
+  switch (input?.toLowerCase()) {
+    case 'blue':
+      return 'blue';
+    case 'green':
+      return 'green';
+    case 'orange':
+      return 'orange';
+    case 'primary':
+      return 'primary';
+    case 'purple':
+      return 'purple';
+    default:
+      return undefined;
+  }
 }

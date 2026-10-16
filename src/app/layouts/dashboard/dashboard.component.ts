@@ -35,6 +35,8 @@ import {
   TwitchStreamInfo,
 } from '../../../../shared/contracts/twitch-operations';
 import { LocalRuntimeClient } from '../../core/runtime/local-runtime-client.service';
+import { getErrorMessage } from '../../core/utils/error-message';
+import { normalizeTwitchLogin } from '../../core/twitch/normalize-twitch-login';
 
 type DashboardSection = 'overview' | 'automations' | 'commands' | 'rewards' | 'operations';
 type DataSection = DashboardSection;
@@ -946,7 +948,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (authorizationError) {
         throw authorizationError;
       }
-      throw new Error(errors.map(errorMessage).join(' '));
+      throw new Error(errors.map(getErrorMessage).join(' '));
     }
   }
 
@@ -993,7 +995,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const reconnectRequired = isAuthorizationError(error);
     const reason = reconnectRequired
       ? 'Twitch authorization is missing or expired. Reconnect Twitch to continue.'
-      : errorMessage(error);
+      : getErrorMessage(error);
     const message = context ? `${context} ${reason}` : reason;
     this.notice.set({ message, reconnectRequired, tone: 'error' });
   }
@@ -1005,36 +1007,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 function isAuthorizationError(error: unknown): boolean {
   return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof HttpErrorResponse) {
-    const body = error.error;
-    if (
-      typeof body === 'object' &&
-      body !== null &&
-      'message' in body &&
-      typeof body.message === 'string'
-    ) {
-      return body.message;
-    }
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (typeof error === 'string' && error.trim()) {
-    return error;
-  }
-
-  return 'The operation failed.';
-}
-
-function normalizeTwitchLogin(input: string): string | null {
-  const login = input.trim().replace(/^@/, '');
-
-  return /^[a-zA-Z0-9_]{1,25}$/.test(login) ? login : null;
 }
 
 function formatDuration(milliseconds: number): string {
